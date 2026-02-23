@@ -6,7 +6,7 @@ name: 'afklm_delay_transform'
 version: '1.0.0'
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'afklm_delay_transform'
+profile: "afklm_delay_pipeline"
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be

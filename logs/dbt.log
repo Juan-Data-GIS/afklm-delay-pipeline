@@ -1,0 +1,520 @@
+[0m20:22:43.583892 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104a8ce50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105e51550>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105e51850>]}
+
+
+============================== 20:22:43.586192 | 61b6d739-a2cf-494f-98ba-4be840384af0 ==============================
+[0m20:22:43.586192 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:22:43.586463 [debug] [MainThread]: running dbt with arguments {'quiet': 'False', 'target_path': 'None', 'version_check': 'True', 'printer_width': '80', 'static_parser': 'True', 'empty': 'None', 'log_cache_events': 'False', 'partial_parse': 'True', 'introspect': 'True', 'write_json': 'True', 'indirect_selection': 'eager', 'no_print': 'None', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'log_format': 'default', 'use_experimental_parser': 'False', 'fail_fast': 'False', 'debug': 'False', 'send_anonymous_usage_stats': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'invocation_command': 'dbt debug', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'use_colors': 'True'}
+[0m20:22:43.593930 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:22:43.594139 [info ] [MainThread]: python version: 3.9.6
+[0m20:22:43.594287 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:22:43.594423 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:22:43.596919 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:22:43.598554 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.050503418, "process_in_blocks": "0", "process_kernel_time": 0.087937, "process_mem_max_rss": "97402880", "process_out_blocks": "0", "process_user_time": 0.544019}
+[0m20:22:43.598778 [debug] [MainThread]: Command `dbt debug` failed at 20:22:43.598732 after 0.05 seconds
+[0m20:22:43.598950 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104a8ce50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105f171f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105f17be0>]}
+[0m20:22:43.599124 [debug] [MainThread]: Flushing usage events
+[0m20:22:44.114329 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:24:39.990102 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107388df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108751430>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108751730>]}
+
+
+============================== 20:24:39.992493 | 23788947-6ebb-424c-98e3-39bfd3b42d52 ==============================
+[0m20:24:39.992493 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:24:39.992764 [debug] [MainThread]: running dbt with arguments {'log_cache_events': 'False', 'send_anonymous_usage_stats': 'True', 'partial_parse': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'fail_fast': 'False', 'printer_width': '80', 'invocation_command': 'dbt debug', 'empty': 'None', 'static_parser': 'True', 'log_format': 'default', 'indirect_selection': 'eager', 'write_json': 'True', 'cache_selected_only': 'False', 'use_colors': 'True', 'target_path': 'None', 'version_check': 'True', 'no_print': 'None', 'warn_error': 'None', 'use_experimental_parser': 'False', 'quiet': 'False', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'introspect': 'True', 'debug': 'False'}
+[0m20:24:39.999771 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:24:39.999984 [info ] [MainThread]: python version: 3.9.6
+[0m20:24:40.000129 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:24:40.000266 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:24:40.002599 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:24:40.003653 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.04692583, "process_in_blocks": "0", "process_kernel_time": 0.086291, "process_mem_max_rss": "97337344", "process_out_blocks": "0", "process_user_time": 0.55781}
+[0m20:24:40.003841 [debug] [MainThread]: Command `dbt debug` failed at 20:24:40.003801 after 0.05 seconds
+[0m20:24:40.003989 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107388df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1087f5f10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1087f5f70>]}
+[0m20:24:40.004151 [debug] [MainThread]: Flushing usage events
+[0m20:24:40.501257 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:27:57.267703 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107dfcdf0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11160a400>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11160a700>]}
+
+
+============================== 20:27:57.270090 | 15af7603-c4a7-462e-8086-5484f3da5349 ==============================
+[0m20:27:57.270090 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:27:57.270358 [debug] [MainThread]: running dbt with arguments {'no_print': 'None', 'use_experimental_parser': 'False', 'send_anonymous_usage_stats': 'True', 'quiet': 'False', 'static_parser': 'True', 'invocation_command': 'dbt debug', 'target_path': 'None', 'introspect': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'log_format': 'default', 'write_json': 'True', 'printer_width': '80', 'partial_parse': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'debug': 'False', 'use_colors': 'True', 'fail_fast': 'False', 'log_cache_events': 'False', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'version_check': 'True', 'indirect_selection': 'eager', 'empty': 'None', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])'}
+[0m20:27:57.277247 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:27:57.277444 [info ] [MainThread]: python version: 3.9.6
+[0m20:27:57.277588 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:27:57.277724 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:27:57.280006 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:27:57.281253 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.047547374, "process_in_blocks": "0", "process_kernel_time": 0.101564, "process_mem_max_rss": "97796096", "process_out_blocks": "0", "process_user_time": 0.549716}
+[0m20:27:57.281439 [debug] [MainThread]: Command `dbt debug` failed at 20:27:57.281399 after 0.05 seconds
+[0m20:27:57.281586 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107dfcdf0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1116adf70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1116ad850>]}
+[0m20:27:57.281769 [debug] [MainThread]: Flushing usage events
+[0m20:27:57.926616 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:29:31.987779 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bdccd30>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d991520>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d991820>]}
+
+
+============================== 20:29:31.990084 | 0be5146d-0e0c-4fe9-ab38-7ae09e4f3d34 ==============================
+[0m20:29:31.990084 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:29:31.990374 [debug] [MainThread]: running dbt with arguments {'version_check': 'True', 'fail_fast': 'False', 'no_print': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'quiet': 'False', 'debug': 'False', 'static_parser': 'True', 'partial_parse': 'True', 'use_experimental_parser': 'False', 'printer_width': '80', 'write_json': 'True', 'log_format': 'default', 'indirect_selection': 'eager', 'cache_selected_only': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'target_path': 'None', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'empty': 'None', 'use_colors': 'True', 'log_cache_events': 'False', 'invocation_command': 'dbt debug', 'send_anonymous_usage_stats': 'True', 'introspect': 'True', 'warn_error': 'None'}
+[0m20:29:31.996849 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:29:31.997053 [info ] [MainThread]: python version: 3.9.6
+[0m20:29:31.997190 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:29:31.997320 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:29:31.999806 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:29:32.000995 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.04420729, "process_in_blocks": "0", "process_kernel_time": 0.077813, "process_mem_max_rss": "97992704", "process_out_blocks": "0", "process_user_time": 0.563907}
+[0m20:29:32.001218 [debug] [MainThread]: Command `dbt debug` failed at 20:29:32.001173 after 0.04 seconds
+[0m20:29:32.001398 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bdccd30>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10da35be0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10da35580>]}
+[0m20:29:32.001575 [debug] [MainThread]: Flushing usage events
+[0m20:29:32.472456 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:33:41.627042 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103208df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10429d400>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10429d700>]}
+
+
+============================== 20:33:41.629632 | eb5512af-0fd0-490d-8763-bef723659bb7 ==============================
+[0m20:33:41.629632 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:33:41.630002 [debug] [MainThread]: running dbt with arguments {'target_path': 'None', 'write_json': 'True', 'invocation_command': 'dbt debug', 'indirect_selection': 'eager', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'printer_width': '80', 'quiet': 'False', 'partial_parse': 'True', 'introspect': 'True', 'cache_selected_only': 'False', 'fail_fast': 'False', 'log_format': 'default', 'send_anonymous_usage_stats': 'True', 'no_print': 'None', 'use_colors': 'True', 'log_cache_events': 'False', 'empty': 'None', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'debug': 'False', 'use_experimental_parser': 'False', 'version_check': 'True', 'warn_error': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs'}
+[0m20:33:41.637774 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:33:41.637980 [info ] [MainThread]: python version: 3.9.6
+[0m20:33:41.638121 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:33:41.638254 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:33:41.640470 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:33:41.641715 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.049408916, "process_in_blocks": "0", "process_kernel_time": 0.094046, "process_mem_max_rss": "96960512", "process_out_blocks": "0", "process_user_time": 0.548905}
+[0m20:33:41.641899 [debug] [MainThread]: Command `dbt debug` failed at 20:33:41.641861 after 0.05 seconds
+[0m20:33:41.642058 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103208df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104341f70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104341850>]}
+[0m20:33:41.642220 [debug] [MainThread]: Flushing usage events
+[0m20:33:42.193171 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:34:06.527457 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10740cd60>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1087d1490>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1087d1790>]}
+
+
+============================== 20:34:06.529209 | 65f5ddef-0408-413c-b320-c0ddc4852c4b ==============================
+[0m20:34:06.529209 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:34:06.529483 [debug] [MainThread]: running dbt with arguments {'send_anonymous_usage_stats': 'True', 'no_print': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'warn_error': 'None', 'introspect': 'True', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'log_cache_events': 'False', 'partial_parse': 'True', 'version_check': 'True', 'target_path': 'None', 'cache_selected_only': 'False', 'use_experimental_parser': 'False', 'log_format': 'default', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'static_parser': 'True', 'indirect_selection': 'eager', 'empty': 'None', 'write_json': 'True', 'use_colors': 'True', 'debug': 'False', 'quiet': 'False', 'fail_fast': 'False', 'invocation_command': 'dbt debug', 'printer_width': '80'}
+[0m20:34:06.533221 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:34:06.533375 [info ] [MainThread]: python version: 3.9.6
+[0m20:34:06.533509 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:34:06.533646 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:34:06.535919 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:34:06.536956 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.041533876, "process_in_blocks": "0", "process_kernel_time": 0.068135, "process_mem_max_rss": "97828864", "process_out_blocks": "0", "process_user_time": 0.544994}
+[0m20:34:06.537164 [debug] [MainThread]: Command `dbt debug` failed at 20:34:06.537125 after 0.04 seconds
+[0m20:34:06.537315 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10740cd60>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108875280>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108875a30>]}
+[0m20:34:06.537473 [debug] [MainThread]: Flushing usage events
+[0m20:34:07.008380 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:36:17.191844 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a238df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bfd1430>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bfd1730>]}
+
+
+============================== 20:36:17.194367 | 8a9f0ccb-eb20-4c5a-a292-918eb75ca789 ==============================
+[0m20:36:17.194367 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:36:17.194640 [debug] [MainThread]: running dbt with arguments {'cache_selected_only': 'False', 'write_json': 'True', 'log_cache_events': 'False', 'target_path': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'indirect_selection': 'eager', 'quiet': 'False', 'partial_parse': 'True', 'invocation_command': 'dbt debug', 'send_anonymous_usage_stats': 'True', 'log_format': 'default', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'use_experimental_parser': 'False', 'version_check': 'True', 'debug': 'False', 'static_parser': 'True', 'printer_width': '80', 'no_print': 'None', 'use_colors': 'True', 'empty': 'None', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'fail_fast': 'False', 'warn_error': 'None', 'introspect': 'True'}
+[0m20:36:17.201490 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:36:17.201690 [info ] [MainThread]: python version: 3.9.6
+[0m20:36:17.201835 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:36:17.201972 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:36:17.204485 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:36:17.205945 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.0484155, "process_in_blocks": "0", "process_kernel_time": 0.105568, "process_mem_max_rss": "97353728", "process_out_blocks": "0", "process_user_time": 0.563074}
+[0m20:36:17.206194 [debug] [MainThread]: Command `dbt debug` failed at 20:36:17.206142 after 0.05 seconds
+[0m20:36:17.206376 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a238df0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c875f10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c875f70>]}
+[0m20:36:17.206571 [debug] [MainThread]: Flushing usage events
+[0m20:36:17.818862 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:36:38.664473 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105f70e20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1070064c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1070067c0>]}
+
+
+============================== 20:36:38.666291 | a39e2064-968d-49d2-b62f-0e2ba6eb8ffb ==============================
+[0m20:36:38.666291 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:36:38.666575 [debug] [MainThread]: running dbt with arguments {'send_anonymous_usage_stats': 'True', 'introspect': 'True', 'indirect_selection': 'eager', 'warn_error': 'None', 'log_format': 'default', 'target_path': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'static_parser': 'True', 'empty': 'None', 'printer_width': '80', 'cache_selected_only': 'False', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'partial_parse': 'True', 'version_check': 'True', 'no_print': 'None', 'quiet': 'False', 'write_json': 'True', 'invocation_command': 'dbt debug', 'log_cache_events': 'False', 'use_colors': 'True', 'debug': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])'}
+[0m20:36:38.670385 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:36:38.670549 [info ] [MainThread]: python version: 3.9.6
+[0m20:36:38.670687 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:36:38.670823 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:36:38.672931 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:36:38.673926 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.04044979, "process_in_blocks": "0", "process_kernel_time": 0.066769, "process_mem_max_rss": "97501184", "process_out_blocks": "0", "process_user_time": 0.549444}
+[0m20:36:38.674121 [debug] [MainThread]: Command `dbt debug` failed at 20:36:38.674084 after 0.04 seconds
+[0m20:36:38.674273 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105f70e20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1070cd190>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1070cdbb0>]}
+[0m20:36:38.674424 [debug] [MainThread]: Flushing usage events
+[0m20:36:39.129862 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:39:26.275961 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10608cdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1074514c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1074517c0>]}
+
+
+============================== 20:39:26.278355 | 5220a4da-696f-4682-8654-64e869c3f3f2 ==============================
+[0m20:39:26.278355 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:39:26.278639 [debug] [MainThread]: running dbt with arguments {'log_cache_events': 'False', 'printer_width': '80', 'quiet': 'False', 'debug': 'False', 'introspect': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'static_parser': 'True', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'warn_error': 'None', 'log_format': 'default', 'partial_parse': 'True', 'version_check': 'True', 'empty': 'None', 'write_json': 'True', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'fail_fast': 'False', 'cache_selected_only': 'False', 'send_anonymous_usage_stats': 'True', 'indirect_selection': 'eager', 'target_path': 'None', 'invocation_command': 'dbt debug', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])'}
+[0m20:39:26.285754 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:39:26.285962 [info ] [MainThread]: python version: 3.9.6
+[0m20:39:26.286106 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:39:26.286246 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:39:26.288653 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:39:26.289753 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.045652084, "process_in_blocks": "0", "process_kernel_time": 0.083147, "process_mem_max_rss": "97583104", "process_out_blocks": "0", "process_user_time": 0.55892}
+[0m20:39:26.289942 [debug] [MainThread]: Command `dbt debug` failed at 20:39:26.289900 after 0.05 seconds
+[0m20:39:26.290105 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10608cdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1074f5f70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1074f5850>]}
+[0m20:39:26.290276 [debug] [MainThread]: Flushing usage events
+[0m20:39:26.896869 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:40:15.369504 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10540cdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1066d14c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1066d17c0>]}
+
+
+============================== 20:40:15.371956 | c09591a8-880c-44ec-8240-1c9a2003becf ==============================
+[0m20:40:15.371956 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:40:15.372223 [debug] [MainThread]: running dbt with arguments {'use_experimental_parser': 'False', 'invocation_command': 'dbt debug', 'log_cache_events': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'cache_selected_only': 'False', 'version_check': 'True', 'warn_error': 'None', 'quiet': 'False', 'use_colors': 'True', 'printer_width': '80', 'write_json': 'True', 'indirect_selection': 'eager', 'no_print': 'None', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'log_format': 'default', 'empty': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'static_parser': 'True', 'debug': 'False', 'fail_fast': 'False', 'partial_parse': 'True', 'send_anonymous_usage_stats': 'True', 'introspect': 'True', 'target_path': 'None'}
+[0m20:40:15.378760 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:40:15.378950 [info ] [MainThread]: python version: 3.9.6
+[0m20:40:15.379089 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:40:15.379221 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:40:15.381495 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'AFKLM_DB_HOST'
+[0m20:40:15.382548 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.04398925, "process_in_blocks": "0", "process_kernel_time": 0.082491, "process_mem_max_rss": "97124352", "process_out_blocks": "0", "process_user_time": 0.554873}
+[0m20:40:15.382737 [debug] [MainThread]: Command `dbt debug` failed at 20:40:15.382696 after 0.04 seconds
+[0m20:40:15.382887 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10540cdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106775f70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106775850>]}
+[0m20:40:15.383050 [debug] [MainThread]: Flushing usage events
+[0m20:40:15.893396 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:41:21.733636 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x110ecce20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1121924c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1121927c0>]}
+
+
+============================== 20:41:21.735899 | d50c442c-6cc6-4346-8e61-72d2325840d2 ==============================
+[0m20:41:21.735899 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:41:21.736167 [debug] [MainThread]: running dbt with arguments {'log_cache_events': 'False', 'invocation_command': 'dbt debug --config-dir', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'printer_width': '80', 'debug': 'False', 'fail_fast': 'False', 'indirect_selection': 'eager', 'static_parser': 'True', 'use_experimental_parser': 'False', 'partial_parse': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'log_format': 'default', 'no_print': 'None', 'send_anonymous_usage_stats': 'True', 'empty': 'None', 'version_check': 'True', 'introspect': 'True', 'use_colors': 'True', 'quiet': 'False', 'warn_error': 'None', 'write_json': 'True', 'cache_selected_only': 'False', 'target_path': 'None'}
+[0m20:41:21.742822 [info ] [MainThread]: To view your profiles.yml file, run:
+
+open /Users/juanmontenegro/.dbt
+[0m20:41:21.743936 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": true, "command_wall_clock_time": 0.042443376, "process_in_blocks": "0", "process_kernel_time": 0.065611, "process_mem_max_rss": "99680256", "process_out_blocks": "0", "process_user_time": 0.557278}
+[0m20:41:21.744139 [debug] [MainThread]: Command `dbt debug` succeeded at 20:41:21.744094 after 0.04 seconds
+[0m20:41:21.744314 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x110ecce20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x112192310>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1121925e0>]}
+[0m20:41:21.744498 [debug] [MainThread]: Flushing usage events
+[0m20:41:22.247525 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:43:10.767321 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107cd4e50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d67550>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d67850>]}
+
+
+============================== 20:43:10.770768 | b45fbe4b-5f1c-42da-a327-022ccd31a0a1 ==============================
+[0m20:43:10.770768 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:43:10.771039 [debug] [MainThread]: running dbt with arguments {'log_format': 'default', 'log_cache_events': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'empty': 'None', 'use_experimental_parser': 'False', 'warn_error': 'None', 'write_json': 'True', 'no_print': 'None', 'use_colors': 'True', 'indirect_selection': 'eager', 'printer_width': '80', 'cache_selected_only': 'False', 'partial_parse': 'True', 'quiet': 'False', 'fail_fast': 'False', 'introspect': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'profiles_dir': '/Users/juanmontenegro/.dbt', 'version_check': 'True', 'send_anonymous_usage_stats': 'True', 'debug': 'False', 'static_parser': 'True', 'invocation_command': 'dbt debug', 'target_path': 'None'}
+[0m20:43:10.778033 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:43:10.778242 [info ] [MainThread]: python version: 3.9.6
+[0m20:43:10.778385 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:43:10.778520 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:43:10.778671 [info ] [MainThread]: Using profiles dir at /Users/juanmontenegro/.dbt
+[0m20:43:10.778802 [info ] [MainThread]: Using profiles.yml file at /Users/juanmontenegro/.dbt/profiles.yml
+[0m20:43:10.778930 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:43:10.824563 [info ] [MainThread]: Configuration:
+[0m20:43:10.824822 [info ] [MainThread]:   profiles.yml file [[31mERROR not found[0m]
+[0m20:43:10.824972 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:43:10.825103 [info ] [MainThread]: Required dependencies:
+[0m20:43:10.825285 [debug] [MainThread]: Executing "git --help"
+[0m20:43:10.836239 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:43:10.836668 [debug] [MainThread]: STDERR: "b''"
+[0m20:43:10.836871 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:43:10.837043 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:43:10.837190 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:43:10.837327 [info ] [MainThread]: dbt looked for a profiles.yml file in /Users/juanmontenegro/.dbt/profiles.yml, but did
+not find one. For more information on configuring your profile, consult the
+documentation:
+
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m20:43:10.838612 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.10231412, "process_in_blocks": "0", "process_kernel_time": 0.077055, "process_mem_max_rss": "99450880", "process_out_blocks": "0", "process_user_time": 0.588023}
+[0m20:43:10.838832 [debug] [MainThread]: Command `dbt debug` failed at 20:43:10.838785 after 0.10 seconds
+[0m20:43:10.839050 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107cd4e50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108e285b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10666d8b0>]}
+[0m20:43:10.839247 [debug] [MainThread]: Flushing usage events
+[0m20:43:11.423165 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:45:09.984087 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113444d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x115011490>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x115011790>]}
+
+
+============================== 20:45:09.986376 | 88b25540-90a2-4c5b-af73-db48edd69534 ==============================
+[0m20:45:09.986376 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:45:09.986639 [debug] [MainThread]: running dbt with arguments {'write_json': 'True', 'use_experimental_parser': 'False', 'profiles_dir': '.', 'version_check': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'empty': 'None', 'partial_parse': 'True', 'debug': 'False', 'log_cache_events': 'False', 'use_colors': 'True', 'introspect': 'True', 'no_print': 'None', 'send_anonymous_usage_stats': 'True', 'quiet': 'False', 'fail_fast': 'False', 'static_parser': 'True', 'printer_width': '80', 'log_format': 'default', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'indirect_selection': 'eager', 'invocation_command': 'dbt debug --profiles-dir .', 'target_path': 'None', 'warn_error': 'None', 'cache_selected_only': 'False'}
+[0m20:45:09.993328 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:45:09.993535 [info ] [MainThread]: python version: 3.9.6
+[0m20:45:09.993687 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:45:09.993824 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:45:09.993969 [info ] [MainThread]: Using profiles dir at .
+[0m20:45:09.994101 [info ] [MainThread]: Using profiles.yml file at ./profiles.yml
+[0m20:45:09.994232 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:45:10.038978 [info ] [MainThread]: Configuration:
+[0m20:45:10.039245 [info ] [MainThread]:   profiles.yml file [[31mERROR not found[0m]
+[0m20:45:10.039394 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:45:10.039531 [info ] [MainThread]: Required dependencies:
+[0m20:45:10.039714 [debug] [MainThread]: Executing "git --help"
+[0m20:45:10.051544 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:45:10.051977 [debug] [MainThread]: STDERR: "b''"
+[0m20:45:10.052174 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:45:10.052481 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:45:10.052703 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:45:10.052879 [info ] [MainThread]: dbt looked for a profiles.yml file in ./profiles.yml, but did
+not find one. For more information on configuring your profile, consult the
+documentation:
+
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m20:45:10.054151 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.100949585, "process_in_blocks": "0", "process_kernel_time": 0.082654, "process_mem_max_rss": "100368384", "process_out_blocks": "0", "process_user_time": 0.601002}
+[0m20:45:10.054376 [debug] [MainThread]: Command `dbt debug` failed at 20:45:10.054326 after 0.10 seconds
+[0m20:45:10.054587 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113444d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113947280>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1147f92b0>]}
+[0m20:45:10.054803 [debug] [MainThread]: Flushing usage events
+[0m20:45:10.616414 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:45:31.026431 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1185c4d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x119893490>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x119893790>]}
+
+
+============================== 20:45:31.028752 | 001b67f6-d754-41b0-a2aa-4503d19c3bab ==============================
+[0m20:45:31.028752 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:45:31.029024 [debug] [MainThread]: running dbt with arguments {'cache_selected_only': 'False', 'write_json': 'True', 'no_print': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'quiet': 'False', 'fail_fast': 'False', 'use_colors': 'True', 'version_check': 'True', 'introspect': 'True', 'invocation_command': 'dbt debug --profiles-dir .dbt', 'printer_width': '80', 'static_parser': 'True', 'empty': 'None', 'warn_error': 'None', 'indirect_selection': 'eager', 'debug': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'log_format': 'default', 'send_anonymous_usage_stats': 'True', 'use_experimental_parser': 'False', 'partial_parse': 'True', 'target_path': 'None', 'profiles_dir': '.dbt', 'log_cache_events': 'False'}
+[0m20:45:31.035972 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:45:31.036169 [info ] [MainThread]: python version: 3.9.6
+[0m20:45:31.036309 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:45:31.036443 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:45:31.037925 [info ] [MainThread]: Using profiles dir at .dbt
+[0m20:45:31.038078 [info ] [MainThread]: Using profiles.yml file at .dbt/profiles.yml
+[0m20:45:31.038209 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:45:31.082401 [info ] [MainThread]: Configuration:
+[0m20:45:31.082656 [info ] [MainThread]:   profiles.yml file [[31mERROR invalid[0m]
+[0m20:45:31.082802 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:45:31.082934 [info ] [MainThread]: Required dependencies:
+[0m20:45:31.083114 [debug] [MainThread]: Executing "git --help"
+[0m20:45:31.090020 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:45:31.090438 [debug] [MainThread]: STDERR: "b''"
+[0m20:45:31.090690 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:45:31.090924 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:45:31.091080 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:45:31.091217 [info ] [MainThread]: Profile loading failed for the following reason:
+Runtime Error
+  Could not find profile named 'afklm_delay_transform'
+
+
+[0m20:45:31.092510 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.09814116, "process_in_blocks": "0", "process_kernel_time": 0.080259, "process_mem_max_rss": "99713024", "process_out_blocks": "0", "process_user_time": 0.602703}
+[0m20:45:31.092759 [debug] [MainThread]: Command `dbt debug` failed at 20:45:31.092710 after 0.10 seconds
+[0m20:45:31.093177 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1185c4d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1190874c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x119804be0>]}
+[0m20:45:31.093703 [debug] [MainThread]: Flushing usage events
+[0m20:45:31.590661 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:47:01.703236 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105d48e20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106dde4c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106dde7c0>]}
+
+
+============================== 20:47:01.705412 | cefe5d32-8c9c-4a4b-88dd-c86397b5ea1d ==============================
+[0m20:47:01.705412 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:47:01.705678 [debug] [MainThread]: running dbt with arguments {'introspect': 'True', 'partial_parse': 'True', 'indirect_selection': 'eager', 'use_colors': 'True', 'printer_width': '80', 'use_experimental_parser': 'False', 'log_format': 'default', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'static_parser': 'True', 'write_json': 'True', 'empty': 'None', 'debug': 'False', 'fail_fast': 'False', 'cache_selected_only': 'False', 'warn_error': 'None', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'quiet': 'False', 'invocation_command': 'dbt debug --profiles-dir .dbt', 'profiles_dir': '.dbt', 'log_cache_events': 'False', 'target_path': 'None', 'send_anonymous_usage_stats': 'True', 'no_print': 'None', 'version_check': 'True'}
+[0m20:47:01.712353 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:47:01.712550 [info ] [MainThread]: python version: 3.9.6
+[0m20:47:01.712694 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:47:01.712832 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:47:01.753885 [info ] [MainThread]: Using profiles dir at .dbt
+[0m20:47:01.754138 [info ] [MainThread]: Using profiles.yml file at .dbt/profiles.yml
+[0m20:47:01.754281 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:47:01.754555 [info ] [MainThread]: adapter type: postgres
+[0m20:47:01.754724 [info ] [MainThread]: adapter version: 1.9.1
+[0m20:47:01.798160 [info ] [MainThread]: Configuration:
+[0m20:47:01.798429 [info ] [MainThread]:   profiles.yml file [[32mOK found and valid[0m]
+[0m20:47:01.798579 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:47:01.798739 [info ] [MainThread]: Required dependencies:
+[0m20:47:01.798920 [debug] [MainThread]: Executing "git --help"
+[0m20:47:01.811334 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:47:01.811779 [debug] [MainThread]: STDERR: "b''"
+[0m20:47:01.811982 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:47:01.812182 [info ] [MainThread]: Connection:
+[0m20:47:01.812418 [info ] [MainThread]:   host: db.tyxjeiruvzhldsunewgt.supabase.co
+[0m20:47:01.812632 [info ] [MainThread]:   port: 5432
+[0m20:47:01.812772 [info ] [MainThread]:   user: postgres
+[0m20:47:01.812902 [info ] [MainThread]:   database: postgres
+[0m20:47:01.813031 [info ] [MainThread]:   schema: dbt_prod
+[0m20:47:01.813155 [info ] [MainThread]:   connect_timeout: 10
+[0m20:47:01.813279 [info ] [MainThread]:   role: None
+[0m20:47:01.813402 [info ] [MainThread]:   search_path: None
+[0m20:47:01.813526 [info ] [MainThread]:   keepalives_idle: 0
+[0m20:47:01.813647 [info ] [MainThread]:   sslmode: require
+[0m20:47:01.813769 [info ] [MainThread]:   sslcert: None
+[0m20:47:01.813891 [info ] [MainThread]:   sslkey: None
+[0m20:47:01.814013 [info ] [MainThread]:   sslrootcert: None
+[0m20:47:01.814135 [info ] [MainThread]:   application_name: dbt
+[0m20:47:01.814257 [info ] [MainThread]:   retries: 1
+[0m20:47:01.814569 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m20:47:01.866222 [debug] [MainThread]: Acquiring new postgres connection 'debug'
+[0m20:47:01.887566 [debug] [MainThread]: Using postgres connection "debug"
+[0m20:47:01.887812 [debug] [MainThread]: On debug: select 1 as id
+[0m20:47:01.887954 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m20:47:02.250901 [debug] [MainThread]: SQL status: SELECT 1 in 0.362 seconds
+[0m20:47:02.254394 [debug] [MainThread]: On debug: Close
+[0m20:47:02.256439 [info ] [MainThread]:   Connection test: [[32mOK connection ok[0m]
+
+[0m20:47:02.257095 [info ] [MainThread]: [32mAll checks passed![0m
+[0m20:47:02.260796 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": true, "command_wall_clock_time": 0.5899515, "process_in_blocks": "0", "process_kernel_time": 0.142179, "process_mem_max_rss": "117538816", "process_out_blocks": "0", "process_user_time": 0.677614}
+[0m20:47:02.261342 [debug] [MainThread]: Command `dbt debug` succeeded at 20:47:02.261223 after 0.59 seconds
+[0m20:47:02.261694 [debug] [MainThread]: Connection 'debug' was properly closed.
+[0m20:47:02.262065 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105d48e20>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106dde130>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105fd2b80>]}
+[0m20:47:02.262484 [debug] [MainThread]: Flushing usage events
+[0m20:47:02.754971 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:53:31.978300 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107accdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d8f4c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d8f7c0>]}
+
+
+============================== 20:53:31.980433 | 408181eb-5ce5-4fd8-b760-b29d52ded842 ==============================
+[0m20:53:31.980433 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:53:31.980705 [debug] [MainThread]: running dbt with arguments {'target_path': 'None', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'send_anonymous_usage_stats': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'use_experimental_parser': 'False', 'empty': 'None', 'version_check': 'True', 'write_json': 'True', 'static_parser': 'True', 'printer_width': '80', 'log_cache_events': 'False', 'introspect': 'True', 'invocation_command': 'dbt debug', 'no_print': 'None', 'quiet': 'False', 'profiles_dir': '36489(pwd)/.dbt', 'fail_fast': 'False', 'debug': 'False', 'indirect_selection': 'eager', 'partial_parse': 'True', 'warn_error': 'None', 'log_format': 'default', 'cache_selected_only': 'False', 'use_colors': 'True'}
+[0m20:53:31.987291 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:53:31.987501 [info ] [MainThread]: python version: 3.9.6
+[0m20:53:31.987657 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:53:31.987801 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:53:31.987948 [info ] [MainThread]: Using profiles dir at 36489(pwd)/.dbt
+[0m20:53:31.988080 [info ] [MainThread]: Using profiles.yml file at 36489(pwd)/.dbt/profiles.yml
+[0m20:53:31.988210 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:53:32.034109 [info ] [MainThread]: Configuration:
+[0m20:53:32.034385 [info ] [MainThread]:   profiles.yml file [[31mERROR not found[0m]
+[0m20:53:32.034539 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:53:32.034677 [info ] [MainThread]: Required dependencies:
+[0m20:53:32.034864 [debug] [MainThread]: Executing "git --help"
+[0m20:53:32.042636 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:53:32.043023 [debug] [MainThread]: STDERR: "b''"
+[0m20:53:32.043199 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:53:32.043358 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:53:32.043496 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:53:32.043631 [info ] [MainThread]: dbt looked for a profiles.yml file in 36489(pwd)/.dbt/profiles.yml, but did
+not find one. For more information on configuring your profile, consult the
+documentation:
+
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m20:53:32.044981 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.097066164, "process_in_blocks": "0", "process_kernel_time": 0.081504, "process_mem_max_rss": "99450880", "process_out_blocks": "0", "process_user_time": 0.601816}
+[0m20:53:32.045252 [debug] [MainThread]: Command `dbt debug` failed at 20:53:32.045202 after 0.10 seconds
+[0m20:53:32.045473 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107accdc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d8f040>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d7a0d0>]}
+[0m20:53:32.045674 [debug] [MainThread]: Flushing usage events
+[0m20:53:32.618389 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:57:45.291689 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107b28dc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108bbc4c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108bbc7c0>]}
+
+
+============================== 20:57:45.294340 | 202f2c8b-4006-4cb2-ad59-4c452a9874e6 ==============================
+[0m20:57:45.294340 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:57:45.294612 [debug] [MainThread]: running dbt with arguments {'log_format': 'default', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'target_path': 'None', 'cache_selected_only': 'False', 'introspect': 'True', 'version_check': 'True', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'profiles_dir': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/afklm-delay-pipeline/.dbt', 'quiet': 'False', 'printer_width': '80', 'use_experimental_parser': 'False', 'write_json': 'True', 'empty': 'None', 'use_colors': 'True', 'debug': 'False', 'invocation_command': 'dbt debug', 'no_print': 'None', 'warn_error': 'None', 'partial_parse': 'True', 'send_anonymous_usage_stats': 'True', 'static_parser': 'True', 'fail_fast': 'False'}
+[0m20:57:45.301602 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:57:45.301782 [info ] [MainThread]: python version: 3.9.6
+[0m20:57:45.301922 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:57:45.302054 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:57:45.302193 [info ] [MainThread]: Using profiles dir at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/afklm-delay-pipeline/.dbt
+[0m20:57:45.302326 [info ] [MainThread]: Using profiles.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/afklm-delay-pipeline/.dbt/profiles.yml
+[0m20:57:45.302453 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:57:45.347544 [info ] [MainThread]: Configuration:
+[0m20:57:45.347796 [info ] [MainThread]:   profiles.yml file [[31mERROR not found[0m]
+[0m20:57:45.347943 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:57:45.348077 [info ] [MainThread]: Required dependencies:
+[0m20:57:45.348273 [debug] [MainThread]: Executing "git --help"
+[0m20:57:45.359072 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:57:45.359445 [debug] [MainThread]: STDERR: "b''"
+[0m20:57:45.359611 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:57:45.359784 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:57:45.359932 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:57:45.360066 [info ] [MainThread]: dbt looked for a profiles.yml file in /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/afklm-delay-pipeline/.dbt/profiles.yml, but did
+not find one. For more information on configuring your profile, consult the
+documentation:
+
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m20:57:45.361738 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.10234358, "process_in_blocks": "0", "process_kernel_time": 0.096564, "process_mem_max_rss": "99844096", "process_out_blocks": "0", "process_user_time": 0.600845}
+[0m20:57:45.362081 [debug] [MainThread]: Command `dbt debug` failed at 20:57:45.362021 after 0.10 seconds
+[0m20:57:45.362344 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107b28dc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108bbc040>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108ba50d0>]}
+[0m20:57:45.362598 [debug] [MainThread]: Flushing usage events
+[0m20:57:45.915297 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:58:57.660926 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107d30d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108dc4490>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108dc4790>]}
+
+
+============================== 20:58:57.663142 | 04315cf8-7bc6-48cf-9eb2-03f3cada5376 ==============================
+[0m20:58:57.663142 [info ] [MainThread]: Running with dbt=1.10.19
+[0m20:58:57.663407 [debug] [MainThread]: running dbt with arguments {'cache_selected_only': 'False', 'target_path': 'None', 'log_cache_events': 'False', 'static_parser': 'True', 'no_print': 'None', 'introspect': 'True', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'warn_error': 'None', 'version_check': 'True', 'invocation_command': 'dbt debug', 'indirect_selection': 'eager', 'empty': 'None', 'printer_width': '80', 'log_format': 'default', 'write_json': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'use_colors': 'True', 'debug': 'False', 'quiet': 'False', 'profiles_dir': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt', 'partial_parse': 'True', 'send_anonymous_usage_stats': 'True', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs'}
+[0m20:58:57.669741 [info ] [MainThread]: dbt version: 1.10.19
+[0m20:58:57.669956 [info ] [MainThread]: python version: 3.9.6
+[0m20:58:57.670115 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m20:58:57.670253 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m20:58:57.670394 [info ] [MainThread]: Using profiles dir at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt
+[0m20:58:57.670522 [info ] [MainThread]: Using profiles.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt/profiles.yml
+[0m20:58:57.670649 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m20:58:57.715829 [info ] [MainThread]: Configuration:
+[0m20:58:57.716099 [info ] [MainThread]:   profiles.yml file [[31mERROR not found[0m]
+[0m20:58:57.716253 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m20:58:57.716385 [info ] [MainThread]: Required dependencies:
+[0m20:58:57.716576 [debug] [MainThread]: Executing "git --help"
+[0m20:58:57.722310 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m20:58:57.722621 [debug] [MainThread]: STDERR: "b''"
+[0m20:58:57.722864 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m20:58:57.723083 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m20:58:57.723250 [info ] [MainThread]: [31m1 check failed:[0m
+[0m20:58:57.723395 [info ] [MainThread]: dbt looked for a profiles.yml file in /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt/profiles.yml, but did
+not find one. For more information on configuring your profile, consult the
+documentation:
+
+https://docs.getdbt.com/docs/configure-your-profile
+
+
+[0m20:58:57.724593 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.09415333, "process_in_blocks": "0", "process_kernel_time": 0.079182, "process_mem_max_rss": "99811328", "process_out_blocks": "0", "process_user_time": 0.59085}
+[0m20:58:57.724806 [debug] [MainThread]: Command `dbt debug` failed at 20:58:57.724763 after 0.09 seconds
+[0m20:58:57.725017 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107d30d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108e83b80>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108dc4eb0>]}
+[0m20:58:57.725212 [debug] [MainThread]: Flushing usage events
+[0m20:58:58.201700 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m21:01:47.715269 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103ba8e50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104c3c4f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104c3c7f0>]}
+
+
+============================== 21:01:47.717622 | 2a200997-65b7-4fd9-a8f8-f88395f48ad0 ==============================
+[0m21:01:47.717622 [info ] [MainThread]: Running with dbt=1.10.19
+[0m21:01:47.717883 [debug] [MainThread]: running dbt with arguments {'profiles_dir': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt', 'use_colors': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'partial_parse': 'True', 'quiet': 'False', 'write_json': 'True', 'invocation_command': 'dbt debug', 'send_anonymous_usage_stats': 'True', 'version_check': 'True', 'cache_selected_only': 'False', 'static_parser': 'True', 'empty': 'None', 'introspect': 'True', 'target_path': 'None', 'printer_width': '80', 'no_print': 'None', 'use_experimental_parser': 'False', 'indirect_selection': 'eager', 'log_format': 'default', 'log_path': '/Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/logs', 'log_cache_events': 'False', 'warn_error': 'None', 'fail_fast': 'False', 'debug': 'False'}
+[0m21:01:47.724690 [info ] [MainThread]: dbt version: 1.10.19
+[0m21:01:47.724893 [info ] [MainThread]: python version: 3.9.6
+[0m21:01:47.725038 [info ] [MainThread]: python path: /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/venv/bin/python3
+[0m21:01:47.725172 [info ] [MainThread]: os info: macOS-15.5-arm64-arm-64bit
+[0m21:01:47.761619 [info ] [MainThread]: Using profiles dir at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt
+[0m21:01:47.761863 [info ] [MainThread]: Using profiles.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/.dbt/profiles.yml
+[0m21:01:47.762011 [info ] [MainThread]: Using dbt_project.yml file at /Users/juanmontenegro/Documents/Formation_Data_Eng/projet_afklm_delay_transform_prod/afklm-delay-pipeline/dbt_project.yml
+[0m21:01:47.762420 [info ] [MainThread]: adapter type: postgres
+[0m21:01:47.762562 [info ] [MainThread]: adapter version: 1.9.1
+[0m21:01:47.805104 [info ] [MainThread]: Configuration:
+[0m21:01:47.805370 [info ] [MainThread]:   profiles.yml file [[32mOK found and valid[0m]
+[0m21:01:47.805546 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m21:01:47.805696 [info ] [MainThread]: Required dependencies:
+[0m21:01:47.805902 [debug] [MainThread]: Executing "git --help"
+[0m21:01:47.817618 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m21:01:47.817942 [debug] [MainThread]: STDERR: "b''"
+[0m21:01:47.818119 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m21:01:47.818278 [info ] [MainThread]: Connection:
+[0m21:01:47.818444 [info ] [MainThread]:   host: db.tyxjeiruvzhldsunewgt.supabase.co
+[0m21:01:47.818574 [info ] [MainThread]:   port: 5432
+[0m21:01:47.818699 [info ] [MainThread]:   user: postgres
+[0m21:01:47.818825 [info ] [MainThread]:   database: postgres
+[0m21:01:47.818948 [info ] [MainThread]:   schema: dbt_prod
+[0m21:01:47.819071 [info ] [MainThread]:   connect_timeout: 10
+[0m21:01:47.819193 [info ] [MainThread]:   role: None
+[0m21:01:47.819318 [info ] [MainThread]:   search_path: None
+[0m21:01:47.819441 [info ] [MainThread]:   keepalives_idle: 0
+[0m21:01:47.819563 [info ] [MainThread]:   sslmode: require
+[0m21:01:47.819686 [info ] [MainThread]:   sslcert: None
+[0m21:01:47.819809 [info ] [MainThread]:   sslkey: None
+[0m21:01:47.819931 [info ] [MainThread]:   sslrootcert: None
+[0m21:01:47.820055 [info ] [MainThread]:   application_name: dbt
+[0m21:01:47.820180 [info ] [MainThread]:   retries: 1
+[0m21:01:47.820477 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m21:01:47.874162 [debug] [MainThread]: Acquiring new postgres connection 'debug'
+[0m21:01:47.895714 [debug] [MainThread]: Using postgres connection "debug"
+[0m21:01:47.895926 [debug] [MainThread]: On debug: select 1 as id
+[0m21:01:47.896057 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m21:01:48.221562 [debug] [MainThread]: SQL status: SELECT 1 in 0.325 seconds
+[0m21:01:48.224166 [debug] [MainThread]: On debug: Close
+[0m21:01:48.226582 [info ] [MainThread]:   Connection test: [[32mOK connection ok[0m]
+
+[0m21:01:48.227243 [info ] [MainThread]: [32mAll checks passed![0m
+[0m21:01:48.231864 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": true, "command_wall_clock_time": 0.54836196, "process_in_blocks": "0", "process_kernel_time": 0.124787, "process_mem_max_rss": "117096448", "process_out_blocks": "0", "process_user_time": 0.675383}
+[0m21:01:48.232879 [debug] [MainThread]: Command `dbt debug` succeeded at 21:01:48.232668 after 0.55 seconds
+[0m21:01:48.233491 [debug] [MainThread]: Connection 'debug' was properly closed.
+[0m21:01:48.234061 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103ba8e50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104c3c130>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105227850>]}
+[0m21:01:48.234730 [debug] [MainThread]: Flushing usage events
+[0m21:01:48.778584 [debug] [MainThread]: An error was encountered while trying to flush usage events
