@@ -1,0 +1,5 @@
+version: 2
+
+# Déclarer les sources de données (tables/vues amont)
+# Voir README pour les conventions
+sources: []

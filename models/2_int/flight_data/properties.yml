@@ -1,0 +1,5 @@
+version: 2
+
+# Modèles intermédiaires - transformations lourdes
+# Voir README pour les conventions
+models: []

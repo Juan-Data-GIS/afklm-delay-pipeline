@@ -1,0 +1,5 @@
+version: 2
+
+# Faits et dimensions - consommation Metabase
+# Voir README pour les conventions
+models: []

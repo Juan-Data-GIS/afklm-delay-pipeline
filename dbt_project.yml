@@ -25,12 +25,15 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
-
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
+# Structure: 1_raw / 2_int / 3_mart (voir README)
 models:
   afklm_delay_transform:
-    # Config indicated by + and applies to all files under models/example/
-    example:
+    1_raw:
+      +schema: raw
       +materialized: view
+    2_int:
+      +schema: int
+      +materialized: view
+    3_mart:
+      +schema: mart
+      +materialized: table

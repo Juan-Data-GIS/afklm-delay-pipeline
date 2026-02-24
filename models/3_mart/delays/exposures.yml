@@ -1,0 +1,5 @@
+version: 2
+
+# Exposures Metabase (dashboards, requêtes)
+# Voir README pour les conventions
+exposures: []
