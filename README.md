@@ -95,7 +95,22 @@ L'analogie : les données brutes sont comme des ingrédients non préparés. dbt
 
 ### mise — Gestionnaire d'environnement
 
-mise gère la version de Python utilisée dans ce projet (3.13.2) et définit la variable `DBT_PROFILES_DIR` qui force dbt à utiliser le fichier de configuration local (`profiles.yml`) plutôt qu'un fichier global partagé. Cela garantit l'**isolation** entre ce projet et d'autres projets dbt sur la même machine.
+mise gère la **version de Python** utilisée dans ce projet (3.13.2) et définit la variable `DBT_PROFILES_DIR` qui force dbt à utiliser le fichier de configuration local (`profiles.yml`) plutôt qu'un fichier global partagé. Cela garantit l'**isolation** entre ce projet et d'autres projets dbt sur la même machine.
+
+**mise vs venv — rôles complémentaires :**
+
+| Outil | Rôle | Fichier de config |
+|-------|------|-------------------|
+| mise | Version de Python (runtime) | `.mise.toml` |
+| venv | Packages Python isolés du projet | `requirements.txt` |
+
+Les deux s'utilisent ensemble : mise garantit que `python` pointe sur la bonne version, venv garantit que `dbt`, `dlt`, etc. sont installés dans un environnement isolé.
+
+**Remarques pratiques :**
+
+- `mise trust` : demandé une seule fois par projet, c'est une mesure de sécurité normale (mise ne fait pas confiance automatiquement aux nouveaux fichiers `.mise.toml`).
+- `mise install` : installe Python 3.13.2 si absent — **pas nécessaire à chaque session**, Python reste installé sur la machine.
+- Dans certains projets, dbt est installé comme outil mise (ex: `[tools] dbt = "1.x"`) — dans ce cas il faut `mise run dbt run`. Ici, dbt est installé dans le venv Python, donc `dbt run` suffit après `source venv/bin/activate`.
 
 ---
 
@@ -190,6 +205,19 @@ cp .dlt/secrets.toml.example .dlt/secrets.toml
 # → éditer .dlt/secrets.toml et renseigner la clé API AF/KLM
 
 # Les fichiers .env.dev et .env.prod sont fournis séparément (hors Git)
+```
+
+---
+
+## Reprendre le travail (session suivante)
+
+Quand tu rouvres le workspace après l'avoir fermé, **`mise install` n'est pas nécessaire** — Python et les packages sont déjà installés. Il suffit de réactiver le venv et les variables d'environnement :
+
+```bash
+cd afklm-delay-pipeline
+source venv/bin/activate          # réactive le venv (packages déjà là)
+source ./switch-env.sh dev        # recharge les variables d'environnement dans le shell
+dbt run                           # prêt à travailler
 ```
 
 ---
