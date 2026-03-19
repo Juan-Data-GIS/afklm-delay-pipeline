@@ -1,5 +1,24 @@
 version: 2
 
-# Déclarer les sources de données (tables/vues amont)
-# Voir README pour les conventions
-sources: []
+# Déclarer les 3 tables normalisées chargées par dlt
+sources:
+  - name: flight_data
+    database: "{{ target.dbname }}"
+    schema: public
+    description: "Tables AF/KLM chargées par dlt (Option B)"
+    tables:
+      - name: operational_flights
+        description: "Vols opérationnels"
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}
+      - name: operational_flight_legs
+        description: "Segments de vol"
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}
+      - name: operational_flight_delays
+        description: "Retards par segment"
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}

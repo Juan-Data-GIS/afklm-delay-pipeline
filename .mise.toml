@@ -1,0 +1,5 @@
+[tools]
+python = "3.13.2"
+
+[env]
+DBT_PROFILES_DIR = "."

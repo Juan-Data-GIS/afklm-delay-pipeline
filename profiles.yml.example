@@ -1,0 +1,13 @@
+# Copier en ~/.dbt/profiles.yml ou dans le projet
+afklm_delay_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('AFKLM_DB_HOST') }}"
+      port: "{{ env_var('AFKLM_DB_PORT', '5432') }}"
+      user: "{{ env_var('AFKLM_DB_USER') }}"
+      password: "{{ env_var('AFKLM_DB_PASSWORD') }}"
+      dbname: "{{ env_var('AFKLM_DB_NAME', 'postgres') }}"
+      schema: public
+      threads: 4

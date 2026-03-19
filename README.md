@@ -1,413 +1,325 @@
-# afklm-delay-pipeline
+# Pipeline de prédiction des retards AF/KLM
 
-Pipeline complet pour l'analyse des retards AF/KLM.  
-**Warehouse :** Supabase (PostgreSQL) | **BI :** Metabase | **Ingestion :** dlt / Airbyte
+Pipeline de données end-to-end pour l'analyse et la prédiction des retards de vols Air France / KLM.
+
+**Stack :** API AF/KLM → dlt → Supabase (PostgreSQL) → dbt → ML (scikit-learn / XGBoost)
+
+---
+
+## Contexte du projet
+
+L'objectif est de construire un pipeline de données complet qui :
+1. **Collecte** les données de vols en temps réel depuis l'API officielle AF/KLM
+2. **Transforme** ces données brutes en un schéma analytique propre et documenté
+3. **Prédit** les retards à l'aide d'un modèle de machine learning entraîné sur les données historiques
+
+Le projet s'appuie sur deux dépôts Git distincts :
+
+| Dépôt | Rôle |
+|-------|------|
+| `dst_airlines` | Environnement de développement et d'exploration (notebooks, prototypes, documentation de travail) |
+| `afklm-delay-pipeline` *(ce repo)* | Pipeline de production validé — code stable, prêt à être présenté et déployé |
 
 ---
 
 ## Architecture globale
 
 ```
-[Source externe]
-      │
-      ▼
-[dlt / Airbyte]          ← Extract & Load (EL)
-      │
-      ▼
-Supabase (schema: public)
-      │
-      ▼
-[dbt]                    ← Transform (raw → int → mart)
-      │
-      ▼
-mart.fct_delays
-      │
-      ▼
-[ml_score.py]            ← Step ML Python (scikit-learn, etc.)
-      │
-      ▼
-ml_delays_scored (Supabase)
-      │              │
-      ▼              ▼
-[pg_export.py]   [Front interne]
-(système externe) (lecture à la demande)
+┌─────────────────────────────────────────────────────────────────┐
+│                        SOURCE                                    │
+│              API AF/KLM (developer.airfranceklm.com)            │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                    ┌───────▼────────┐
+                    │   dlt (Python)  │  ← Extract & Load
+                    │  ingestion/     │     Appelle l'API, normalise
+                    └───────┬─────────┘    et charge dans Supabase
+                            │
+            ┌───────────────▼───────────────┐
+            │         Supabase              │
+            │     (PostgreSQL cloud)        │
+            │                               │
+            │  schema: public               │
+            │  ├── operational_flights      │  ← tables brutes créées par dlt
+            │  ├── operational_flight_legs  │
+            │  └── operational_flight_delays│
+            └───────────────┬───────────────┘
+                            │
+                    ┌───────▼────────┐
+                    │   dbt Core     │  ← Transform
+                    │   models/      │     raw → int → mart
+                    └───────┬─────────┘
+                            │
+            ┌───────────────▼───────────────┐
+            │         Supabase              │
+            │                               │
+            │  schema: raw   (vues sources) │
+            │  schema: int   (features ML)  │
+            │  schema: mart  (fct_flight_legs, dim_*) │
+            └───────────────┬───────────────┘
+                            │
+                    ┌───────▼────────┐
+                    │  ml_score.py   │  ← Scoring ML  [en cours]
+                    │  (XGBoost)     │
+                    └───────┬─────────┘
+                            │
+                    ml_delays_scored (Supabase)
 ```
 
 ---
 
-## Séquence d'exécution orchestrée
+## Outils utilisés
 
-| Étape | Outil | Action |
-|-------|-------|--------|
-| 1 | dlt / Airbyte | Charge les données brutes dans Supabase |
-| 2 | `dbt run` | Produit `mart.fct_delays` (raw → int → mart) |
-| 3 | `python ml_score.py` | Lit `mart.fct_delays`, écrit `ml_delays_scored` |
-| 4 | `python pg_export.py` | Lit `ml_delays_scored`, pousse vers le système externe |
-| 5 | Front interne | Disponible en continu, lit `ml_delays_scored` à la demande |
+### dlt — Data Load Tool
 
-> Les étapes 1 à 4 sont des **batchs séquentiels** (orchestrateur ou cron).  
-> L'étape 5 est **permanente** : le front lit directement Supabase via PostgREST ou une API dédiée.
+dlt est une bibliothèque Python légère qui s'occupe de la partie **Extract & Load** du pipeline. Concrètement :
 
----
+- Il appelle l'API AF/KLM avec pagination automatique
+- Il normalise la réponse JSON (qui est imbriquée et complexe) en **3 tables relationnelles plates**
+- Il crée automatiquement les tables dans Supabase à la première exécution (pas besoin de SQL manuel)
+- Il gère le chargement incrémental (on ne recharge pas tout à chaque fois)
 
-## TL;DR — Couches dbt
+C'est l'équivalent d'un "tuyau" automatique entre l'API et la base de données.
 
-| Couche dbt | Dossier | Schéma source | Schéma cible |
-|------------|---------|---------------|--------------|
-| **1_raw** | `1_raw/<source>` | Externe / Supabase | `raw` |
-| **2_int** | `2_int/<source>` | `raw` | `int` |
-| **3_mart** | `3_mart/<domaine>` | `int` | `mart` |
+### dbt Core — Data Build Tool
 
----
+dbt est l'outil qui s'occupe de la **transformation** des données. Il travaille entièrement en SQL, directement dans Supabase. Les données brutes passent par 3 couches successives :
 
-## Structure des dossiers
+| Couche | Dossier | Ce qu'elle fait |
+|--------|---------|-----------------|
+| **raw** | `models/1_raw/` | Renomme et type les colonnes brutes — aucune logique métier |
+| **int** (intermédiaire) | `models/2_int/` | Calcule les retards, la congestion aéroportuaire — transformations lourdes |
+| **mart** | `models/3_mart/` | Produit le schéma final prêt pour le ML : `fct_flight_legs`, `dim_airports`, `dim_airlines`, `dim_date` |
 
-```
-models/
-├── 1_raw/                    # Ingestion et déclaration des sources
-│   └── <source_system>/
-│       ├── sources.yml
-│       ├── <source>__source_<model>.sql
-│       └── <source>__raw_ingest_<model>.sql   # optionnel
-├── 2_int/                    # Couche intermédiaire (transformations lourdes)
-│   ├── <source_system>/
-│   │   ├── <source>__int_<model>_<grain>.sql
-│   │   └── properties.yml
-│   └── common/
-│       ├── int_<model>_<grain>.sql
-│       └── properties.yml
-└── 3_mart/                   # Faits et dimensions (consommation Metabase)
-    ├── common/
-    │   └── dim_date.sql
-    └── <domaine>/
-        ├── dim_<model>.sql
-        ├── fct_<model>_<grain>.sql
-        ├── properties.yml
-        └── exposures.yml
-```
+L'analogie : les données brutes sont comme des ingrédients non préparés. dbt est la cuisine qui les transforme étape par étape en un plat fini, documenté et testable.
+
+### mise — Gestionnaire d'environnement
+
+mise gère la version de Python utilisée dans ce projet (3.13.2) et définit la variable `DBT_PROFILES_DIR` qui force dbt à utiliser le fichier de configuration local (`profiles.yml`) plutôt qu'un fichier global partagé. Cela garantit l'**isolation** entre ce projet et d'autres projets dbt sur la même machine.
 
 ---
 
-## 0. Ingestion — dlt / Airbyte (Extract & Load)
+## Deux environnements Supabase : dev et prod
 
-### Rôle
+Le projet utilise deux bases de données Supabase distinctes dans l'organisation **AirLines DST** :
 
-Avant que dbt ne transforme quoi que ce soit, les données doivent être **chargées dans Supabase** depuis les sources externes (APIs, bases opérationnelles, fichiers, SaaS). Ce rôle est assuré par **dlt** (léger, code-first, Python) ou **Airbyte** (UI, connecteurs prêts à l'emploi).
+| Environnement | Projet Supabase | Région AWS | Usage |
+|---------------|----------------|------------|-------|
+| **dev** | `afklm_delay_db_dev` | eu-west-1 | Développement, tests, validation de la pipeline |
+| **prod** | `afklm_delay_db_prod` | eu-central-1 | Données de production, présentation finale |
 
-### Pourquoi c'est indispensable
+Cette séparation est fondamentale : on ne risque jamais d'écraser des données de production par accident pendant le développement.
 
-Utiliser un outil d'ingestion dédié n'est pas optionnel : c'est une **sécurité structurelle** pour tout le reste de la pipeline.
-
-- **Contrat de schéma garanti** : dlt/Airbyte s'assurent que les données arrivent toujours avec la même structure dans Supabase. La couche `1_raw` de dbt peut donc s'appuyer dessus sans défensive supplémentaire.
-- **Gestion des aléas de connexion** : coupures réseau, timeouts, changements d'endpoint, rotation de clé API — ces problèmes sont absorbés par l'outil d'ingestion, pas par dbt.
-- **Chargement incrémental natif** : gestion des watermarks, déduplication, modes `append` / `merge` / `replace` sans code custom.
-- **Évolution de schéma** : si la source ajoute ou renomme une colonne, dlt/Airbyte le détectent et adaptent la table cible sans casser la pipeline.
-- **Suppression de l'anti-pattern `raw_ingest`** : sans outil dédié, on est tenté de faire de l'ingestion dans dbt (`raw_ingest_*.sql`), ce qui mélange les responsabilités. Avec dlt/Airbyte, les données sont déjà dans Supabase avant que dbt ne démarre — chaque outil fait son métier.
-
-### Comparatif
-
-| | dlt | Airbyte |
-|---|---|---|
-| Setup | `pip install dlt` | Docker / Airbyte Cloud |
-| Approche | Code Python | UI + connecteurs |
-| Idéal pour | Projet solo / sources custom | Équipes / sources multiples standard |
-| Destination Supabase | `destination="postgres"` | Connecteur natif |
-
-### Ce que dbt reçoit
-
-Après l'étape EL, les données brutes sont disponibles dans le schéma `public` de Supabase (ou un schéma dédié). Elles sont déclarées dans `sources.yml` avec des checks de freshness — **aucun modèle `raw_ingest` n'est nécessaire**.
-
----
-
-## 1. Couche Raw (1_raw)
-
-### Rôle
-
-Point d'entrée unique des données dans le warehouse Supabase. Les dossiers correspondent aux systèmes sources (SaaS, bases, APIs, fichiers).
-
-### sources.yml
-
-- **Objectif :** Déclarer les tables/vues amont gérées par d'autres équipes ou processus externes.
-- **Description de la source :** Système d'origine, équipe responsable.
-- **Description des tables :** Rôle de la table, grain.
-- **Freshness :** Définir `warn_after` et `error_after` pour la fraîcheur des données.
-
-Exemple de structure :
-
-```yaml
-sources:
-  - name: <source_system>
-    database: "{{ env_var('AFKLM_DB_NAME') }}"
-    schema: public
-    loaded_at_field: updated_at
-    description: 'Description du système source et équipe propriétaire'
-    tables:
-      - name: <table_name>
-        description: 'Description de la table et son grain'
-        freshness:
-          warn_after: {count: 7, period: day}
-          error_after: {count: 14, period: day}
-```
-
-**Convention de nommage** (si le schéma est contrôlé par l'équipe BI) :  
-`raw.<source_system>__raw_<model_name>`
-
-### Modèles source
-
-**Objectif :** Après que les tables/vues ont été déclarées dans `sources.yml`, on introduit une couche « source model » fine au-dessus de **toutes** les tables/vues. Cette couche crée une copie des données (quasi non transformées) en un lieu centralisé dans le projet Supabase, facilitant ainsi le travail des utilisateurs finaux.
-
-**Convention de nommage :** `<folder_name>__source_<model_name>.sql`  
-*(ex. `flight_data__source_flights.sql`)*
-
-**Transformations autorisées :**
-
-| ✅ Autorisé | ❌ Interdit |
-|-------------|------------|
-| Renommage de colonnes | Joins — les modèles source doivent être en correspondance 1:1 avec les tables des systèmes sources |
-| Cast de types | Agrégations — conserver le grain original |
-| Calculs simples (ex. centimes → euros, unix → timestamp) | |
-| Catégorisation (CASE, booléens) | |
-
-**Matérialisation :** `view` par défaut. Table incrémentale si la table upstream est lente (volume élevé ou vue coûteuse). Les modèles source apparaissent en **vert** dans le graphe de lineage dbt.
-
----
-
-### Anti-pattern : Raw Ingest
-
-**Objectif :** En l'absence d'outil d'orchestration dédié (ex. Dagster, Airflow), il peut être tentant d'utiliser dbt pour définir une vue qui exécute une requête externe vers une base hors Supabase (ex. PostgreSQL externe). L'inconvénient de cette approche est que les modèles `raw_ingest` ne peuvent pas être déclarés dans `sources.yml` — ils disposeront néanmoins d'un modèle source au-dessus d'eux.
-
-**Convention de nommage :** `<folder_name>__raw_ingest_<model_name>.sql`  
-*(ex. `flight_data__raw_ingest_flights.sql`)*
-
-**Transformations autorisées :**
-
-| ✅ Autorisé | ❌ Interdit |
-|-------------|------------|
-| Cast vers des types acceptés par PostgreSQL | Toute autre transformation — la donnée doit être aussi brute que possible |
-
-**Matérialisation :** `view` par défaut. Les modèles `raw_ingest` apparaissent en **vert** dans le graphe de lineage dbt.
-
----
-
-## 2. Couche Intermediate (2_int)
-
-### Rôle
-
-Couche optionnelle où se font les **transformations lourdes** des modèles source en blocs réutilisables. Ces blocs alimentent les faits et dimensions de la couche mart.
-
-- **Jamais exposée** directement aux utilisateurs finaux ni via des dashboards.
-- Les dossiers correspondent majoritairement aux systèmes sources ou aux données amont gérées par d'autres équipes (SaaS, bases, APIs, fichiers). Un dossier `common` peut exister pour les modèles susceptibles d'être partagés entre plusieurs cas d'usage.
-
-### Modèles int
-
-**Objectif :** Empiler des couches de logique lourde avec des objectifs précis et testables — en joignant les modèles source pour former les entités que l'on souhaite. Pensez aux modèles int comme des **CTEs qui seraient elles-mêmes testables et réutilisables** par plusieurs autres modèles.
-
-**Convention de nommage :** `<source_system>__int_<model>_<grain>.sql`  
-*(ex. `flight_data__int_flights_daily.sql`)*  
-Les objets communs n'ont pas besoin du préfixe source : `int_<model>_<grain>.sql`  
-*(ex. `int_delay_measures_daily.sql`)*
-
-**Transformations autorisées :**
-
-| ✅ Autorisé | ❌ Interdit |
-|-------------|------------|
-| Joins | Référencer directement `sources.yml` — utiliser uniquement des modèles source, d'autres modèles int, ou parfois des faits/dimensions |
-| Filtrage / suppression de lignes | |
-| Agrégations (préciser le grain dans le nom du modèle) | |
-| Nouvelles colonnes calculées | |
-| Catégorisation (CASE, booléens) — uniquement si non réalisable en couche source | |
-| Dépliage de données semi-structurées (JSON) | |
-
-**Matérialisation :** `view` par défaut. Incrémentale si les vues sont trop lentes.
-
-### properties.yml
-
-- **Description :** Objectif du modèle et grain.
-- **Tests recommandés :**
-  - `unique` ou `dbt_utils.unique_combination_of_columns`
-  - `not_null`
-  - `dbt_expectations.expect_column_distinct_count_to_equal`
-  - `dbt_expectations.expect_column_sum_to_be_between`
-  - `dbt_expectations.expect_column_distinct_count_to_equal`
-
----
-
-## 3. Couche Mart (3_mart)
-
-### Rôle
-
-Création des modèles **Faits** et **Dimensions** prêts à être consommés directement par les utilisateurs finaux ou via Metabase. Les dossiers peuvent être orientés source ou domaine métier. Un dossier `common` regroupe les modèles partagés entre plusieurs domaines.
-
-### Modèles Fact
-
-**Objectif :** Données quantitatives et mesurables, représentant souvent des événements métier ou des transactions.
-
-**Convention de nommage :** `fct__<model_name>_<grain>.sql`  
-*(ex. `fct__delays_daily.sql`)*
-
-**Transformations autorisées :**
-
-| ✅ Autorisé | ❌ Interdit |
-|-------------|------------|
-| Joins | Définir le même concept différemment pour différentes équipes ou systèmes |
-| Nouvelles colonnes calculées | Référencer directement `sources.yml` |
-
-**Matérialisation :** `table` par défaut. Les modèles Fact apparaissent en **jaune** dans le graphe de lineage dbt.
-
-### Modèles Dimension
-
-**Objectif :** Attributs descriptifs qui fournissent du contexte et des axes de catégorisation aux faits — temps, géographie, produits, clients, etc.
-
-**Convention de nommage :** `dim__<model_name>.sql`  
-*(ex. `dim__airports.sql`)*
-
-**Transformations autorisées :**
-
-| ✅ Autorisé | ❌ Interdit |
-|-------------|------------|
-| Joins | Créer une table `dim_user` différente pour chaque plateforme |
-| Nouvelles colonnes calculées | Référencer directement `sources.yml` |
-
-**Matérialisation :** `table` par défaut. Les modèles Dimension apparaissent en **jaune** dans le graphe de lineage dbt.
-
-### Règle de conception — limiter la complexité
-
-Les faits et dimensions peuvent s'appuyer sur des modèles int ou directement sur des modèles source. Sauter la couche int ne doit être envisagé que si la logique du fait ou de la dimension est relativement simple et courte.
-
-**Règle d'or : ne jamais assembler plus de 5 ou 6 concepts dans un seul Fait ou Dimension.** Deux modèles int qui regroupent chacun 3 concepts, puis un Fait/Dimension qui les combine, produiront une chaîne logique bien plus lisible.
-
-*Exemple concret :*
-
-**Option A — à éviter**
-```
-fct_happy_meals_cooked_daily = (Tomate + salade + fromage + pain) + (viande × grill) + ((lait + glace) × mixeur) + (frites + huile)
-```
-
-**Option B — à privilégier**
-```
-fct_happy_meals_cooked_daily = Hamburgers + Milkshakes + Frites
-
-int_hamburgers_daily  = (Tomate + salade + fromage + pain) + (viande × grill)
-int_milkshakes_daily  = (Lait + glace) × mixeur
-int_frites_daily      = Frites + huile
-```
-
-En plus d'une logique de Fait allégée, chaque modèle de l'Option B est testable et débogable indépendamment. Les blocs int (ex. `int_milkshakes_daily`) deviennent également des briques réutilisables : `fct_drinks_daily = (milkshakes + softdrinks)`.
-
-### properties.yml
-
-- **Description :** Objectif du modèle et grain.
-- **Tests recommandés :**
-  - `unique` ou `dbt_utils.unique_combination_of_columns`
-  - `not_null`
-  - `dbt_expectations.expect_column_distinct_count_to_equal`
-  - `dbt_expectations.expect_column_sum_to_be_between`
-  - `dbt_expectations.expect_column_distinct_count_to_equal`
-
-### exposures.yml
-
-**Objectif :** Documenter les objets **en aval** des modèles dbt : dashboards Metabase, synchronisations rETL, applications, pipelines data science. Cette documentation facilite grandement l'analyse de lineage et d'impact.
-
-Les exposures apparaissent également dans le **site de documentation dbt**. Les exposures vers les dashboards Metabase peuvent être générées automatiquement via l'intégration dbt → Metabase.
-
----
-
-## 4. Machine Learning — ml_score.py
-
-### Rôle
-
-Step Python autonome qui s'exécute **après `dbt run`**. Il enrichit les données de la couche mart avec des scores ou prédictions produits par un modèle ML (scikit-learn ou équivalent).
-
-### Quand faire le ML dans dbt vs hors dbt
-
-| Cas | Recommandation |
-|-----|----------------|
-| Règles métier simples (seuils, CASE, ratios) | Dans dbt (`2_int` ou `3_mart`) |
-| Modèle ML léger (régression linéaire, scoring simple) | Dans dbt via `dbt-python` (si le warehouse le supporte) |
-| Modèle ML lourd (random forest, XGBoost, réseau de neurones) | **Hors dbt**, step Python dédié |
-
-### Séquence du step ML
-
-```
-1. Lire mart.fct_delays depuis Supabase
-2. Appliquer le modèle Python (scikit-learn, joblib, etc.)
-3. Écrire le résultat enrichi dans ml_delays_scored (Supabase)
-```
-
-### Table de sortie : ml_delays_scored
-
-Contient toutes les colonnes de `mart.fct_delays` enrichies de colonnes de prédiction (ex. `delay_score`, `delay_predicted_min`, `risk_category`). Cette table est la source pour `pg_export.py` et le front interne.
-
-> **Lineage dbt :** déclarer `ml_delays_scored` dans un `sources.yml` dédié permet de conserver la lineage complète et d'activer les freshness checks.
-
----
-
-## 5. Export & Consommation aval
-
-### pg_export.py
-
-Script Python batch qui lit `ml_delays_scored` et pousse les données vers un système externe (partenaire, API, autre base). S'exécute après le step ML dans la séquence orchestrée.
-
-### Front interne
-
-Application web interne qui lit `ml_delays_scored` directement depuis Supabase (via PostgREST ou une API dédiée). Contrairement aux étapes 1–4, le front est **permanent et synchrone** : il affiche toujours l'état courant de la table au moment de la requête.
-
----
-
-## Schémas Supabase
-
-| Schéma | Contenu |
-|--------|---------|
-| `public` | Tables brutes chargées par dlt / Airbyte |
-| `raw` | Modèles source dbt (vues fine au-dessus de `public`) |
-| `int` | Modèles intermédiaires dbt |
-| `mart` | Faits et dimensions dbt (consommation Metabase) |
-| *(hors dbt)* | `ml_delays_scored` — table écrite par `ml_score.py` |
-
----
-
-## Adaptations BigQuery → Supabase
-
-| Aspect | BigQuery | Supabase (PostgreSQL) |
-|--------|----------|------------------------|
-| Hiérarchie | `project.dataset.table` | `schema.table` |
-| Datasets | `bi_tracking_raw`, etc. | Schémas `raw`, `int`, `mart` |
-| Types | `TIMESTAMP`, `INT64` | `TIMESTAMPTZ`, `BIGINT` |
-| Fonctions | `SAFE_CAST`, `PARSE_DATE` | `CAST`, `TO_DATE` |
-
----
-
-## Intégration Metabase
-
-- **Connexion :** Metabase se connecte à Supabase.
-- **Schémas exposés :** Principalement `mart`.
-- **Exposures :** Documenter les dashboards dans `exposures.yml` pour la lineage dbt.
-- **Permissions :** Restreindre l'accès Metabase au schéma `mart`.
-
----
-
-## Commandes
+### Comment switcher d'environnement
 
 ```bash
-# Ingestion (EL)
-dlt run pipeline.py          # ou via Airbyte UI / scheduler
+# Activer l'environnement dev
+source ./switch-env.sh dev
 
-# Transformation dbt
-dbt run
-dbt test
-dbt source freshness
-dbt docs generate
-dbt docs serve
-
-# ML & export (à lancer après dbt run)
-python ml_score.py
-python pg_export.py
+# Activer l'environnement prod
+source ./switch-env.sh prod
 ```
+
+Le script copie le bon fichier `.env` (`.env.dev` ou `.env.prod`) et exporte toutes les variables dans le shell courant. dlt et dbt lisent ensuite ces variables automatiquement — aucune configuration à modifier à la main.
+
+> **Note :** Le mot-clé `source` est obligatoire pour que les variables soient disponibles dans le shell courant (pas seulement dans un sous-processus).
+
+---
+
+## Structure du projet
+
+```
+afklm-delay-pipeline/
+│
+├── ingestion/                    ← Scripts dlt (Extract & Load)
+│   ├── afklm_source.py           ← Définition de la source API AF/KLM
+│   ├── afklm_dlt_pipeline.py     ← Pipeline dlt (exécuter pour charger les données)
+│   └── verify_ingestion.py       ← Vérification post-ingestion
+│
+├── models/                       ← Modèles dbt (SQL)
+│   ├── 1_raw/                    ← Couche source (renommage, typage)
+│   ├── 2_int/                    ← Couche intermédiaire (features ML)
+│   └── 3_mart/                   ← Couche finale (fct + dim)
+│
+├── .dlt/
+│   ├── config.toml               ← Configuration dlt (versionnable, pas de secrets)
+│   └── secrets.toml              ← Clé API AF/KLM (gitignore — local uniquement)
+│
+├── .env                          ← Environnement actif (gitignore — local uniquement)
+├── .env.dev                      ← Credentials Supabase DEV (gitignore)
+├── .env.prod                     ← Credentials Supabase PROD (gitignore)
+├── .mise.toml                    ← Version Python + DBT_PROFILES_DIR
+├── profiles.yml                  ← Configuration dbt (gitignore — local uniquement)
+├── dbt_project.yml               ← Définition du projet dbt
+├── switch-env.sh                 ← Script de bascule dev ↔ prod
+└── requirements.txt              ← Dépendances Python avec versions pinnées
+```
+
+---
+
+## Installation
+
+### Prérequis
+
+- [mise](https://mise.jdx.dev/) installé (`brew install mise`)
+- Accès à l'organisation Supabase **AirLines DST**
+- Clé API AF/KLM (developer.airfranceklm.com)
+
+### Étapes
+
+```bash
+# 1. Cloner le repo et entrer dans le dossier
+git clone <url-du-repo>
+cd afklm-delay-pipeline
+
+# 2. Faire confiance au fichier mise (une seule fois)
+mise trust
+
+# 3. Installer Python (si pas déjà présent)
+mise install
+
+# 4. Créer et activer l'environnement virtuel Python
+python -m venv venv
+source venv/bin/activate
+
+# 5. Installer les dépendances
+pip install -r requirements.txt
+
+# 6. Créer les fichiers de secrets locaux
+cp .dlt/secrets.toml.example .dlt/secrets.toml
+# → éditer .dlt/secrets.toml et renseigner la clé API AF/KLM
+
+# Les fichiers .env.dev et .env.prod sont fournis séparément (hors Git)
+```
+
+---
+
+## Exécution du pipeline
+
+### En développement (dev)
+
+```bash
+source ./switch-env.sh dev      # → pointe sur afklm_delay_db_dev
+
+# Étape 1 : Ingestion (si pas déjà fait)
+python ingestion/afklm_dlt_pipeline.py
+
+# Étape 2 : Transformation dbt
+dbt debug                       # vérifie la connexion Supabase
+dbt run                         # construit tous les modèles
+
+# Étape 3 : Tests et documentation
+dbt test
+dbt docs generate && dbt docs serve
+```
+
+### En production (prod)
+
+```bash
+source ./switch-env.sh prod     # → pointe sur afklm_delay_db_prod
+
+# Même séquence — dlt crée automatiquement les tables si elles n'existent pas
+python ingestion/afklm_dlt_pipeline.py
+dbt run
+```
+
+---
+
+## Isolation et sécurité
+
+Tous les fichiers contenant des secrets ou des données d'environnement sont **gitignorés** — ils ne sont jamais versionnés :
+
+| Fichier | Contenu | Pourquoi ignoré |
+|---------|---------|-----------------|
+| `.env` | Variables actives (host, password…) | Credentials en clair |
+| `.env.dev` | Credentials Supabase dev | Credentials en clair |
+| `.env.prod` | Credentials Supabase prod | Credentials en clair |
+| `profiles.yml` | Config dbt avec host/password | Credentials en clair |
+| `.dlt/secrets.toml` | Clé API AF/KLM | Secret API |
+
+Les fichiers `.example` versionnés (`profiles.yml.example`, `.dlt/secrets.toml.example`) servent de templates documentés sans aucun secret.
+
+---
+
+## Modèles dbt — détail
+
+### Couche raw (`1_raw`)
+
+Renommage et typage des colonnes brutes chargées par dlt. Aucune logique métier. Matérialisés en **vues**.
+
+| Modèle | Source | Description |
+|--------|--------|-------------|
+| `flight_data__source_operational_flights` | `operational_flights` | Un vol par ligne |
+| `flight_data__source_operational_flight_legs` | `operational_flight_legs` | Un segment par ligne |
+| `flight_data__source_operational_flight_delays` | `operational_flight_delays` | Un code retard par segment |
+
+### Couche int (`2_int`)
+
+Calculs et enrichissements pour préparer les features du modèle ML. Matérialisés en **vues**.
+
+| Modèle | Description |
+|--------|-------------|
+| `flight_data__int_delays_leg` | Calcul du retard réel par segment (parse des durées ISO 8601) |
+| `flight_data__int_legs_ready` | Jointure vol + segment + retards, features de base |
+| `flight_data__int_airport_congestion` | Indicateur de congestion par aéroport et fenêtre horaire |
+
+### Couche mart (`3_mart`)
+
+Schéma en étoile prêt pour le ML et la visualisation. Matérialisés en **tables**.
+
+| Modèle | Type | Description |
+|--------|------|-------------|
+| `fct_flight_legs` | Fait | Table centrale avec toutes les features ML (retards, congestion, dimensions) |
+| `dim_airports` | Dimension | Référentiel des aéroports |
+| `dim_airlines` | Dimension | Référentiel des compagnies |
+| `dim_date` | Dimension | Calendrier |
+
+---
+
+## Commandes utiles
+
+```bash
+# Switcher d'environnement
+source ./switch-env.sh dev
+source ./switch-env.sh prod
+
+# Vérifier l'environnement actif
+cat .env | grep -E "DBT_TARGET|AFKLM_DB_HOST"
+
+# dbt
+dbt debug                    # test de connexion
+dbt run                      # exécuter tous les modèles
+dbt run --select 3_mart      # exécuter seulement la couche mart
+dbt test                     # lancer les tests de qualité
+dbt docs generate            # générer la documentation
+dbt docs serve               # visualiser la documentation et le lineage
+
+# dlt
+python ingestion/afklm_dlt_pipeline.py    # lancer l'ingestion
+python ingestion/verify_ingestion.py      # vérifier les tables chargées
+```
+
+---
+
+## Statut du projet
+
+| Composant | Statut |
+|-----------|--------|
+| Source API AF/KLM (dlt) | Validé en dev |
+| Modèles dbt (raw → int → mart) | En cours de validation |
+| Configuration mise + switch-env | Opérationnel |
+| Isolation dev / prod | Opérationnel |
+| Scoring ML (ml_score.py) | En cours |
+| Pipeline complet en prod | A venir |
+
+> **Le pipeline est actuellement en phase de validation.** Les données sont correctement ingérées en environnement de développement (`afklm_delay_db_dev`). La validation complète de la chaîne dbt (raw → int → mart) et l'intégration du scoring ML constituent les prochaines étapes avant la mise en production sur `afklm_delay_db_prod`.
 
 ---
 
 ## Ressources
 
-- [Documentation dbt](https://docs.getdbt.com/docs/introduction)
-- [Discourse dbt](https://discourse.getdbt.com/)
-- [Communauté dbt](https://community.getdbt.com/)
+- [Documentation dlt](https://dlthub.com/docs)
+- [Documentation dbt Core](https://docs.getdbt.com/docs/introduction)
+- [API AF/KLM](https://developer.airfranceklm.com)
+- [Supabase](https://supabase.com/docs)
+- [mise](https://mise.jdx.dev/)

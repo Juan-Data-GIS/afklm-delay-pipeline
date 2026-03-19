@@ -1,0 +1,15 @@
+# Pipeline dlt (ingestion)
+dlt[postgres]==1.23.0
+requests==2.32.5
+python-dotenv==1.2.2
+
+# dbt (transformation)
+dbt-postgres==1.10.0
+psycopg2-binary==2.9.11
+
+# ML (scoring)
+pandas==3.0.1
+scikit-learn==1.8.0
+xgboost==3.2.0
+joblib==1.5.3
+imbalanced-learn==0.14.1
