@@ -1,6 +1,11 @@
 -- int.flight_data__int_delays_leg
--- JOIN flights + legs + delays, agrège les delays par leg, parse duration
--- Grain : 1 ligne par leg
+-- Assemble les trois sources raw en une entité cohérente par leg.
+-- Transformations clés :
+--   - JOIN flights → legs : enrichit chaque tronçon avec les infos vol (numéro, date, compagnie).
+--   - Parse ISO 8601 : convertit delay_duration (ex. "PT25M") en entier minutes.
+--   - Agrégation delays : plusieurs codes retard par leg → 1 ligne (somme des durées, premier code).
+--   - Calcul des écarts : departure/arrival_delay_minutes depuis les timestamps réels vs prévus.
+-- Grain : 1 ligne par leg.
 {{ config(schema='int', materialized='view') }}
 
 with legs as (

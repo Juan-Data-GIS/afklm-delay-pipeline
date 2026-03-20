@@ -1,7 +1,12 @@
 -- int.flight_data__int_legs_ready
--- Dernier modèle int : join delays_leg + airport_congestion (départ + arrivée)
--- Toutes les features ML : temporelles, congestion, is_delayed
--- Grain : 1 ligne par leg
+-- Modèle int final : agrège toutes les features nécessaires au ML en une seule ligne par leg.
+-- Construit en trois étapes (CTEs chaînées) :
+--   1. base          : reprend int_delays_leg + features temporelles (heure, jour, mois, jour du mois).
+--   2. dep_congestion: joint la congestion de l'aéroport de départ pour ce jour.
+--   3. arr_congestion: joint la congestion de l'aéroport d'arrivée pour ce jour.
+-- is_delayed = true si l'un des trois indicateurs de retard atteint 15 minutes ou plus
+--              (seuil standard IATA de retard significatif).
+-- Grain : 1 ligne par leg. Alimentation directe de fct_flight_legs (mart).
 {{ config(schema='int', materialized='view') }}
 
 with base as (

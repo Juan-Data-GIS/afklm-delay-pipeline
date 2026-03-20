@@ -1,6 +1,10 @@
 -- mart.fct_flight_legs
--- SELECT sur int_legs_ready, renommage FK pour le ML
--- Aucune transformation — toute la logique est dans int
+-- Table de faits centrale de la pipeline. Consommée par ml_score.py et Metabase.
+-- Contient toutes les features ML prêtes à l'emploi : temporelles, congestion, retards, cible (is_delayed).
+-- Aucune transformation : toute la logique métier est dans les couches int.
+-- Les colonnes airport/airline/date sont renommées en *_key pour indiquer leur rôle de clé étrangère
+-- vers les dimensions (dim_airlines, dim_airports, dim_date).
+-- Grain : 1 ligne par leg (tronçon physique d'un vol).
 {{ config(schema='mart', materialized='table') }}
 select
     leg_id,

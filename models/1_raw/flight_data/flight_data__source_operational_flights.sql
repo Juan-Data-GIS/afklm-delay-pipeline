@@ -1,5 +1,9 @@
 -- raw.flight_data__source_operational_flights
--- 1:1 avec operational_flights, cast uniquement
+-- Entité : un vol = une combinaison (numéro de vol, date, compagnie).
+-- Un vol peut être composé de plusieurs legs (tronçons physiques).
+-- Source : table `operational_flights` chargée par dlt depuis l'API AF/KLM.
+-- Grain  : 1 ligne par vol.
+-- Rôle   : typage uniquement (int, date, timestamptz). Aucune transformation métier.
 {{ config(schema='raw', materialized='view') }}
 select
     id,
