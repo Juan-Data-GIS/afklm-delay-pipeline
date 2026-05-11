@@ -7,9 +7,9 @@
 {{ config(schema='mart', materialized='table') }}
 select distinct
     flight_schedule_date as date_key,
-    flight_schedule_date,
-    extract(dow from flight_schedule_date)::int as day_of_week,
-    extract(month from flight_schedule_date)::int as month,
-    extract(year from flight_schedule_date)::int as year
+    cast(flight_schedule_date as DATE) ,
+    extract(dow from cast(flight_schedule_date as DATE))::int as day_of_week,
+    extract(month from cast(flight_schedule_date as DATE))::int as month,
+    extract(year from cast(flight_schedule_date as DATE))::int as year
 from {{ ref('flight_data__int_legs_ready') }}
 where flight_schedule_date is not null

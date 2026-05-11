@@ -3,7 +3,7 @@
 -- Calcule, pour chaque aéroport et chaque jour, le nombre de vols au départ et à l'arrivée.
 -- Un aéroport très chargé ce jour-là est plus susceptible de générer des retards en cascade.
 -- FULL OUTER JOIN departures/arrivals : capture les aéroports qui ne figurent que d'un seul côté.
--- Grain : 1 ligne par (airport_code, flight_schedule_date).
+-- Grain : 1 ligne par (airportCode, flightScheduleDate).
 {{ config(schema='int', materialized='view') }}
 
 with legs_with_date as (
@@ -18,7 +18,7 @@ departures as (
     select
         departure_airport_code as airport_code,
         flight_schedule_date,
-        count(*) as nb_departing
+        count(*) as nb_flight_departing
     from legs_with_date
     where departure_airport_code is not null
     group by departure_airport_code, flight_schedule_date
@@ -35,8 +35,8 @@ arrivals as (
 select
     coalesce(d.airport_code, a.airport_code) as airport_code,
     coalesce(d.flight_schedule_date, a.flight_schedule_date) as flight_schedule_date,
-    coalesce(d.nb_departing, 0) as nb_departing,
-    coalesce(a.nb_arriving, 0) as nb_arriving
+    coalesce(d.nb_flight_departing, 0) as nb_flight_departing,
+    coalesce(a.nb_arriving, 0) as nb_flight_arriving
 from departures d
 full outer join arrivals a
     on d.airport_code = a.airport_code

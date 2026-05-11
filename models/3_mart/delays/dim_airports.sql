@@ -9,4 +9,4 @@ select distinct airport_code as airport_key from (
     union
     select arrival_airport_code from {{ ref('flight_data__int_legs_ready') }}
 ) u
-where airport_code is not null
+where u.airport_code is not null
