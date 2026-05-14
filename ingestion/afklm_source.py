@@ -262,6 +262,10 @@ def _build_legs_table(flight: dict) -> list[dict]:
         arr_info    = leg.get("arrivalInformation") or {}
         dep_airport = dep_info.get("airport") or {}
         arr_airport = arr_info.get("airport") or {}
+        dep_city = dep_airport.get("city") or {}
+        arr_city = arr_airport.get("city") or {}
+        dep_country = dep_city.get("country") or {}
+        arr_country = arr_city.get("country") or {}
         dep_times   = dep_info.get("times") or {}
         arr_times   = arr_info.get("times") or {}
         irreg       = leg.get("irregularity") or {}
@@ -272,6 +276,8 @@ def _build_legs_table(flight: dict) -> list[dict]:
             "leg_order":                i,                              # 0 = premier segment
             "departure_airport_code":   dep_airport.get("code"),        # ex. "CDG"
             "arrival_airport_code":     arr_airport.get("code"),        # ex. "JFK"
+            "departure_airport_name":   dep_airport.get("name"),        # ex. "KASTRUP AIRPORT"
+            "arrival_airport_name":     arr_airport.get("name"),        # ex. "KASTRUP AIRPORT"
             "published_status":         leg.get("publishedStatus"),     # ex. "OnTime"
             "scheduled_departure":      dep_times.get("scheduled"),     # ISO 8601 string
             "actual_departure":         dep_times.get("actual"),        # Null si pas encore parti
@@ -279,9 +285,21 @@ def _build_legs_table(flight: dict) -> list[dict]:
             "actual_arrival":           arr_times.get("actual"),
             "scheduled_flight_duration": leg.get("scheduledFlightDuration"),  # ex. "PT7H30M"
             "cancelled":                irreg.get("cancelled") == "Y", # Converti en booléen Python
-            "aircraft_type_code":       (leg.get("aircraft") or {}).get("typeCode"),  # ex. "77W"
+            "aircraft_code":       (leg.get("aircraft") or {}).get("typeCode"),  # ex. "77W"
+            "aircraft_name":       (leg.get("aircraft") or {}).get("typeName"),  # ex. "EMBRAER 195 AND LEGACY 1000"
+            "departure_city_code":      dep_city.get("code"), # ex. "PAR"
+            "departure_city_name":      dep_city.get("name"), # ex. "SAVANNAH"
+            "departure_country_code":      dep_country.get("code"), # ex. "FR"
+            "departure_country_name":      dep_country.get("name"), # ex. "FRANCE"
+            "arrival_city_code":      arr_city.get("code"), # ex. "PAR"
+            "arrival_city_name":      arr_city.get("name"), # ex. "SAVANNAH"
+            "arrival_country_code":      arr_country.get("code"), # ex. "FR"
+            "arrival_country_name":      arr_country.get("name"), # ex. "FRANCE"
+
         })
     return rows
+
+
 
 
 def _build_delays_table(flight: dict) -> list[dict]:
@@ -325,6 +343,7 @@ def _build_delays_table(flight: dict) -> list[dict]:
                 "id":            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_{j}")),
                 "flight_leg_id": leg_id,
                 "delay_code":    d.get("delayCode"),     # Code IATA du retard (ex. "93")
+                "delay_reason":    d.get("delayReasonPublicLangTransl") ,     # ex. "This flight was delayed due to unfavourable we..."
                 "delay_duration": d.get("delayDuration"), # Durée en minutes (string)
             })
     return rows

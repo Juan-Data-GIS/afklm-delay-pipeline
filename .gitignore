@@ -5,6 +5,7 @@
 
 # dbt
 profiles.yml
+.user.yml
 .dbt/
 logs/
 target/
@@ -18,3 +19,6 @@ venv/
 __pycache__/
 *.py[cod]
 .DS_Store
+
+# Notes d'avancement (locales)
+avancement_*.md
