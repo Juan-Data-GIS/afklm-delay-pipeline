@@ -10,10 +10,7 @@ log_level = "INFO"  # DEBUG, INFO, WARNING, ERROR
 # Limiter à quelques pages seulement (pageSize=100, donc ~500 vols max)
 
 start_date = "2026-05-01T00:00:00Z"
-end_date = "2026-05-03T00:00:00Z"
+end_date = "2026-05-01T01:00:00Z"
 
 [destination.postgres]
 dataset_name = "public"  # Schéma Supabase où dlt crée les tables
-
-[destination.postgres.credentials]
-username="postgres.amtxaysrmhlznfwqemdu"

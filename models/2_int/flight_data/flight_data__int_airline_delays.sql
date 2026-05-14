@@ -14,7 +14,7 @@ with flights_within_7_days as (
     from {{ ref('flight_data__source_operational_flight_legs') }} l
     join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
     join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
-    where l.cancelled = 'N'
+    where l.cancelled = false
 )
 select 
     fsd.airline_code,

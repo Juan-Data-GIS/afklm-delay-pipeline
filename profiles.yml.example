@@ -1,0 +1,25 @@
+# Copier en ./profiles.yml — chargé via DBT_PROFILES_DIR="." défini dans .mise.toml
+# Switcher d'environnement : source ./switch-env.sh dev | prod
+afklm_delay_pipeline:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('AFKLM_DB_HOST') }}"
+      port: "{{ env_var('AFKLM_DB_PORT', '5432') | int }}"
+      user: "{{ env_var('AFKLM_DB_USER') }}"
+      password: "{{ env_var('AFKLM_DB_PASSWORD') }}"
+      dbname: "{{ env_var('AFKLM_DB_NAME', 'postgres') }}"
+      schema: public
+      threads: 4
+      sslmode: "{{ env_var('AFKLM_DB_SSLMODE', 'require') }}"
+    prod:
+      type: postgres
+      host: "{{ env_var('AFKLM_DB_HOST') }}"
+      port: "{{ env_var('AFKLM_DB_PORT', '5432') | int }}"
+      user: "{{ env_var('AFKLM_DB_USER') }}"
+      password: "{{ env_var('AFKLM_DB_PASSWORD') }}"
+      dbname: "{{ env_var('AFKLM_DB_NAME', 'postgres') }}"
+      schema: public
+      threads: 4
+      sslmode: "{{ env_var('AFKLM_DB_SSLMODE', 'require') }}"

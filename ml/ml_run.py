@@ -1,21 +1,17 @@
 """
 Script ML pour la prédiction des retards AF/KLM.
-Lit silver_mart.fct_flight_legs, prépare les observations et applique le modèle,
-écrit les prédictions dans ml_delays.
+Lit public_mart.fct_flight_legs, prépare les observations et applique le modèle,
+écrit les prédictions dans public.ml_delays.
 """
 
-#update libs
 import os
-import re
-from pathlib import Path
-import joblib
-import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sqlalchemy import create_engine, text
-import urllib.request
 import pickle
+import urllib.request
 
-# Config DB depuis variables d'environnement 
+import pandas as pd
+from sqlalchemy import create_engine, text
+
+# Config DB depuis variables d'environnement
 DB_HOST = os.getenv("AFKLM_DB_HOST", "localhost")
 DB_PORT = os.getenv("AFKLM_DB_PORT", "5432")
 DB_USER = os.getenv("AFKLM_DB_USER", "postgres")
@@ -23,9 +19,17 @@ DB_PASSWORD = os.getenv("AFKLM_DB_PASSWORD", "")
 DB_NAME = os.getenv("AFKLM_DB_NAME", "postgres")
 DB_SSLMODE = os.getenv("AFKLM_DB_SSLMODE", "prefer")
 
-DB_URI = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={DB_SSLMODE}"  
+DB_URI = (
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"?sslmode={DB_SSLMODE}"
+)
 
-FEATURES = [  
+MODEL_MEANS_URL = os.getenv("MODEL_MEANS_URL")
+MODEL_SCALER_URL = os.getenv("MODEL_SCALER_URL")
+MODEL_XGB_URL = os.getenv("MODEL_XGB_URL")
+HTTP_TIMEOUT = int(os.getenv("MODEL_HTTP_TIMEOUT", "30"))
+
+FEATURES = [
     "scheduledFlightDuration",
     "nbFlightDepartingDepartureAirport",
     "nbFlightArrivingDepartureAirport",
@@ -36,72 +40,79 @@ FEATURES = [
     "airlinedelayedshare",
     "departureMonthDay",
     "departureWeekDay",
-    "departureHour"
+    "departureHour",
 ]
 TARGET = "is_delayed"
 
 
+def _load_pickle_from_url(url: str | None, *, label: str) -> object:
+    if not url or not str(url).strip():
+        raise RuntimeError(
+            f"{label} est vide ou absent. Définir MODEL_MEANS_URL, MODEL_SCALER_URL, "
+            "MODEL_XGB_URL dans l'environnement (voir .env.example)."
+        )
+    req = urllib.request.Request(str(url), method="GET")
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+        return pickle.load(resp)
+
+
 def load_data(engine) -> pd.DataFrame:
-    """Charge silver_mart.fct_flight_legs (vols non annulés)."""
+    """Charge public_mart.fct_flight_legs (vols non annulés)."""
     query = """
-    SELECT * FROM silver_mart.fct_flight_legs
+    SELECT * FROM public_mart.fct_flight_legs
     WHERE cancelled = false
     """
     return pd.read_sql(query, engine)
 
 
-def prepare_for_predicton(df: pd.DataFrame): 
-    """Prépare X, y"""
+def prepare_for_prediction(df: pd.DataFrame):
+    """Prépare X, y."""
     df[TARGET] = df[TARGET].astype(bool).astype(int)
-    means_df = pickle.load(urllib.request.urlopen("https://amtxaysrmhlznfwqemdu.supabase.co/storage/v1/object/sign/ml_models/means_2026-04-01_11_33_01.pkl?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80OThhOTAyZC0zYTJmLTRjM2EtOTFlOC05NGE0YTE2MTc0ZTgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtbF9tb2RlbHMvbWVhbnNfMjAyNi0wNC0wMV8xMV8zM18wMS5wa2wiLCJpYXQiOjE3Nzc4NzYzNTYsImV4cCI6MTgwOTQxMjM1Nn0.B-8vk1ot07LMpXv_1dkGoHSKZmpYFsYfuxzRBht_WFc"))
-    scaler = pickle.load(urllib.request.urlopen("https://amtxaysrmhlznfwqemdu.supabase.co/storage/v1/object/sign/ml_models/scaler_2026-04-01_11_33_06.pkl?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80OThhOTAyZC0zYTJmLTRjM2EtOTFlOC05NGE0YTE2MTc0ZTgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtbF9tb2RlbHMvc2NhbGVyXzIwMjYtMDQtMDFfMTFfMzNfMDYucGtsIiwiaWF0IjoxNzc3ODc2NDE5LCJleHAiOjE4MDk0MTI0MTl9.3fW6ZOSCZuAzxc-yUGKZ3iFkpVsVXB_5GBSyWapzhEY"))
+    means_df = _load_pickle_from_url(MODEL_MEANS_URL, label="MODEL_MEANS_URL")
+    scaler = _load_pickle_from_url(MODEL_SCALER_URL, label="MODEL_SCALER_URL")
 
-    # rename for ml 
-    df = df.rename(columns = {
-            "scheduled_flight_duration_minutes":"scheduledFlightDuration",
-            "departure_weekday":"departureWeekDay",
-            "departure_hour":"departureHour",
-            "departure_monthday":"departureMonthDay",
-            "nb_flight_departing_departure_airport":"nbFlightDepartingDepartureAirport",
-            "nb_flight_arriving_departure_airport":"nbFlightArrivingDepartureAirport",
-            "nb_flight_departing_arrival_airport":"nbFlightDepartingArrivalAirport",
-            "nb_flight_arriving_arrival_airport":"nbFlightArrivingArrivalAirport",
-            "departure_airport_delayed_share":"departureairportdelayedshare",
-            "aircraft_delayed_share":"aircraftdelayedshare",
-            "airline_delayed_share":"airlinedelayedshare"}
-            )
-    
+    df = df.rename(
+        columns={
+            "scheduled_flight_duration_minutes": "scheduledFlightDuration",
+            "departure_weekday": "departureWeekDay",
+            "departure_hour": "departureHour",
+            "departure_monthday": "departureMonthDay",
+            "nb_flight_departing_departure_airport": "nbFlightDepartingDepartureAirport",
+            "nb_flight_arriving_departure_airport": "nbFlightArrivingDepartureAirport",
+            "nb_flight_departing_arrival_airport": "nbFlightDepartingArrivalAirport",
+            "nb_flight_arriving_arrival_airport": "nbFlightArrivingArrivalAirport",
+            "departure_airport_delayed_share": "departureairportdelayedshare",
+            "aircraft_delayed_share": "aircraftdelayedshare",
+            "airline_delayed_share": "airlinedelayedshare",
+        }
+    )
 
-    # replace with mean value 
     for col in FEATURES:
         df[col] = df[col].fillna(means_df[col])
     X = df[FEATURES].copy()
 
-    # Normalize 
     X_norm = scaler.transform(X)
-    X_norm  = pd.DataFrame(X_norm)
+    X_norm = pd.DataFrame(X_norm)
     X_norm.columns = X.columns
     X_norm.index = X.index
 
     y = df[TARGET].values
 
-
-    
-
     return X_norm, y
-
 
 
 def main():
     engine = create_engine(DB_URI)
     df = load_data(engine)
     if df.empty:
-        print("Aucune donnée dans mart.fct_flight_legs. Exécuter dbt run avant ml_run.py.")
+        print(
+            "Aucune donnée dans public_mart.fct_flight_legs. Exécuter dbt run avant ml_run.py."
+        )
         return
 
-    X, y = prepare_for_predicton(df)
+    X, y = prepare_for_prediction(df)
 
-    model_ = pickle.load(urllib.request.urlopen("https://amtxaysrmhlznfwqemdu.supabase.co/storage/v1/object/sign/ml_models/xgb_2026-04-01_11_36_35.pkl?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80OThhOTAyZC0zYTJmLTRjM2EtOTFlOC05NGE0YTE2MTc0ZTgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtbF9tb2RlbHMveGdiXzIwMjYtMDQtMDFfMTFfMzZfMzUucGtsIiwiaWF0IjoxNzc3ODgxOTY3LCJleHAiOjE4MDk0MTc5Njd9.dnvFSw1YEAYkNLpequlsQKpWSEng6Zo2p3FaDV0mK7M"))                    
+    model_ = _load_pickle_from_url(MODEL_XGB_URL, label="MODEL_XGB_URL")
 
     y_pred = model_.predict(X)
 
@@ -109,41 +120,31 @@ def main():
     df_w_pred["delay_predicted"] = y_pred
 
     create_sql = """
-     TABLE IF NOT EXISTS public.ml_delays (
-        leg_id UUID,
-        flight_id VARCHAR(50),
-        delay_predicted INTEGER,
-        PRIMARY KEY (leg_id) 
+    CREATE TABLE IF NOT EXISTS public.ml_delays (
+        leg_id          UUID PRIMARY KEY,
+        flight_id       VARCHAR(50),
+        delay_predicted INTEGER
     );
     """
-    #with engine.begin() as conn:
-        #conn.execute(text("DROP TABLE IF EXISTS public.ml_delays CASCADE"))
-    #    conn.execute(text(create_sql))
 
-    cols_out = ["leg_id", "flight_id", "delay_predicted"]
-    #df_w_pred[cols_out].to_sql(
-     #   "ml_delays",
-     #   engine,
-     #   schema="public",
-     #   if_exists="append",
-     #   index=False,
-     #   method="multi",
-    #    chunksize=1000,
-    #)
+    upsert_sql = text(
+        """
+        INSERT INTO public.ml_delays (leg_id, flight_id, delay_predicted)
+        VALUES (:leg_id, :flight_id, :delay_predicted)
+        ON CONFLICT (leg_id) DO UPDATE SET
+            flight_id       = EXCLUDED.flight_id,
+            delay_predicted = EXCLUDED.delay_predicted
+        """
+    )
 
-    values = ", ".join([f"('{row['leg_id']}', '{row['flight_id']}', {row['delay_predicted']})" for _, row in df_w_pred.iterrows()])
-    query = f"""
-    INSERT INTO public.ml_delays (leg_id, flight_id, delay_predicted)
-    VALUES {values}
-    ON CONFLICT (leg_id)
-    DO UPDATE SET
-        flight_id = EXCLUDED.flight_id,
-        delay_predicted = EXCLUDED.delay_predicted;
-    """
+    out = df_w_pred[["leg_id", "flight_id", "delay_predicted"]].copy()
+    out["delay_predicted"] = out["delay_predicted"].astype(int)
+    records = out.to_dict(orient="records")
 
-    with engine.connect() as conn:
-        conn.execute(text(query))
-        conn.commit()
+    with engine.begin() as conn:
+        conn.execute(text(create_sql))
+        for row in records:
+            conn.execute(upsert_sql, row)
 
     print(f"Prédictions écrites dans public.ml_delays ({len(df_w_pred)} lignes).")
 

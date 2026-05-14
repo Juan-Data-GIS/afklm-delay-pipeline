@@ -39,12 +39,12 @@ PAGE_SIZE = 50
 SLEEP_BETWEEN_REQUESTS = 5
 
 # Nombre maximum de tentatives sur erreur 5xx avant de déclarer la page en échec.
-MAX_RETRIES = 2
+MAX_RETRIES = 5
 
 # Délais de backoff progressifs (secondes) entre chaque retry sur erreur 5xx.
 # Les 5xx AF/KLM sont souvent des throttles déguisés, pas de vraies pannes serveur.
 # La progression laisse le temps au serveur de récupérer.
-RETRY_BACKOFF_500 = [5,10]
+RETRY_BACKOFF_500 = [30, 60, 90, 120, 180]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,8 +150,7 @@ def _iter_flights(
             yield flight, fetched_at
 
         # Pages 1 à N-1
-        # for page_num in range(1, total_pages):
-        for page_num in range(1, 2): # for testing 
+        for page_num in range(1, total_pages):
             time.sleep(SLEEP_BETWEEN_REQUESTS)
             try:
                 page_data = _fetch_page(api_key, start_range, end_range, page_num)
