@@ -1,0 +1,5 @@
+# Dépendances spécifiques à l'orchestrateur Airflow
+apache-airflow-providers-postgres
+apache-airflow-providers-redis
+apache-airflow-providers-celery
+apache-airflow-providers-fab

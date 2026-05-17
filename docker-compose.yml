@@ -1,0 +1,136 @@
+name: projet-dst-production
+
+x-airflow-common:
+  &airflow-common
+  build: .
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    
+    AIRFLOW__CORE__FERNET_KEY: '46BKJoQYlPPOexq0OhDZnIlB7JAIEfG1I8g2-X3I0OQ='
+    AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: 'une_cle_secrete_tres_longue_et_partagee_pour_airflow_3'
+    AIRFLOW__API_AUTH__JWT_SECRET: 'une_cle_secrete_tres_longue_et_partagee_pour_airflow_3'
+
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 120
+    AIRFLOW__CORE__DAG_FILE_PROCESSOR_TIMEOUT: 120
+    AIRFLOW__WEBSERVER__COOKIE_NAME: "airflow_formation_session"
+
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__API__HOST: 0.0.0.0
+    AIRFLOW__API__PORT: 8080
+    AIRFLOW__WEBSERVER__BASE_URL: http://localhost:8081
+    AIRFLOW__API__BASE_URL: http://localhost:8081
+
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - airflow_logs:/opt/airflow/logs # logs sur container / pas sur windows
+    - ./dbt:/opt/airflow/dbt
+    - ./docs:/opt/airflow/docs
+    - ./ingestion:/opt/airflow/ingestion
+    - ./.dlt:/opt/airflow/.dlt # pour les secrets DLT
+
+  networks:
+    - airflow-formation-net
+
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: airflow-formation-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5450:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    networks:
+      - airflow-formation-net
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-formation-init
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow fab users create \
+        --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
+      "
+
+  airflow-apiserver:
+    <<: *airflow-common
+    container_name: airflow-formation-apiserver
+    command: api-server
+    ports:
+      - "8081:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-formation-scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    container_name: airflow-formation-dag-processor
+    command: dag-processor
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # --- LA PARTIE APPLICATIVE ---
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: afklm-fastapi
+    working_dir: /app                 
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app 
+    networks:
+      - airflow-formation-net
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: afklm-streamlit
+    working_dir: /app                  
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    networks:
+      - airflow-formation-net
+    depends_on:
+      - fastapi
+
+networks:
+  airflow-formation-net:
+    name: dst-prod-isolated-net        
+    driver: bridge                   
+
+volumes:
+  db_data:
+  airflow_logs:

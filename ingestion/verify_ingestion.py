@@ -17,17 +17,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # 1. Vérifier les variables d'environnement
 print("=== 1. Variables d'environnement ===")
-api_key = os.getenv("AFKLM_API_KEY")
-db_host = os.getenv("AFKLM_DB_HOST")
-db_pass = os.getenv("AFKLM_DB_PASSWORD")
-print(f"  AFKLM_API_KEY: {'✓ défini' if api_key else '✗ manquant'}")
-print(f"  AFKLM_DB_HOST: {'✓ défini' if db_host else '✗ manquant'}")
-print(f"  AFKLM_DB_PASSWORD: {'✓ défini' if db_pass else '✗ manquant'}")
+
+api_key = os.getenv("AF_CLIENT_ID_1")
+db_host = os.getenv("DB_HOST")
+db_pass = os.getenv("DB_PASSWORD")
+
+print(f"  AF_CLIENT_ID_1: {'✓ defini' if api_key else 'X manquant'}")
+print(f"  DB_HOST:        {'✓ defini' if db_host else 'X manquant'}")
+print(f"  DB_PASSWORD:    {'✓ defini' if db_pass else 'X manquant'}")
 
 if not api_key:
-    print("\n→ Définir AFKLM_API_KEY :")
-    print("    export AFKLM_API_KEY='votre_clé'")
-    print("  ou créer un fichier .env à la racine avec AFKLM_API_KEY=...")
+    print("\n-> Erreur : AF_CLIENT_ID_1 est absent de ton fichier .env")
     sys.exit(1)
 
 # 2. Test API (1 requête)
@@ -36,9 +36,9 @@ import requests
 
 url = "https://api.airfranceklm.com/opendata/flightstatus"
 params = {
-    "startRange": "2025-03-10T00:00:00.000Z",
-    "endRange": "2025-03-10T23:59:59.000Z",
-    "pageSize": 10,
+    "startRange": "2026-01-16T00:00:00.000Z", # Date de test fixée en 2026
+    "endRange": "2026-01-16T01:00:00.000Z",
+    "pageSize": 5,
     "pageNumber": 0,
 }
 headers = {"API-Key": api_key, "Accept": "application/hal+json"}
@@ -47,9 +47,9 @@ try:
     r.raise_for_status()
     data = r.json()
     flights = data.get("operationalFlights", [])
-    print(f"  ✓ API OK — {len(flights)} vols récupérés (page 0)")
+    print(f"  ✓ API OK — {len(flights)} vols recuperes (page 0)")
 except requests.exceptions.RequestException as e:
-    print(f"  ✗ Erreur API: {e}")
+    print(f"  X Erreur API: {e}")
     sys.exit(1)
 
 # 3. Test connexion Supabase (si credentials présents)
@@ -60,23 +60,28 @@ if db_host and db_pass:
 
         conn = psycopg2.connect(
             host=db_host,
-            port=os.getenv("AFKLM_DB_PORT", "5432"),
-            database=os.getenv("AFKLM_DB_NAME", "postgres"),
-            user=os.getenv("AFKLM_DB_USER", "postgres"),
+            port=os.getenv("DB_PORT", "5432"), 
+            database=os.getenv("DB_NAME", "postgres"),
+            user=os.getenv("DB_USER"),
             password=db_pass,
-            sslmode=os.getenv("AFKLM_DB_SSLMODE", "require"),
+            sslmode="require",
             connect_timeout=10,
         )
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM public.operational_flights")
+        
+        # AJOUT : Utilisation du schéma dynamique 'bronze' spécifié dans ton .env
+        schema = os.getenv("DB_SCHEMA", "public")
+        cur.execute(f"SELECT COUNT(*) FROM {schema}.operational_flights")
+        
         n = cur.fetchone()[0]
         cur.close()
         conn.close()
-        print(f"  ✓ Connexion OK — {n} lignes dans operational_flights")
+        print(f"  ✓ Connexion OK — {n} lignes dans {schema}.operational_flights")
     except Exception as e:
-        print(f"  ✗ Erreur DB: {e}")
+        print(f"  X Erreur DB: {e}")
+        sys.exit(1) # AJOUT : Force le statut en échec Airflow si la base ne répond pas
 else:
     print("\n=== 3. Connexion Supabase ===")
-    print("  (ignoré — AFKLM_DB_HOST ou AFKLM_DB_PASSWORD manquant)")
+    print("  (ignore — DB_HOST ou DB_PASSWORD manquant)")
 
-print("\n=== Vérification terminée ===")
+print("\n=== Verification terminee ===")

@@ -15,6 +15,9 @@ Ce fichier n'est pas le point d'entrée — voir afklm_dlt_pipeline.py.
 import time
 import uuid
 import logging
+import os  # AJOUT : Nécessaire pour lire les clés d'API de secours dans le .env
+import json  # AJOUT METRICS : Nécessaire pour formater le errors_log au format JSON pour PostgreSQL
+import psycopg2  # AJOUT METRICS : Pour se connecter et écrire directement dans logs.job_runs
 from datetime import datetime, timezone, timedelta
 
 import dlt
@@ -25,18 +28,18 @@ import requests
 logger = logging.getLogger("dlt.sources.afklm")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Constantes
+# Constantes & Structure Globale de Monitoring (AJOUT METRICS)
 # ─────────────────────────────────────────────────────────────────────────────
 
 BASE_URL = "https://api.airfranceklm.com/opendata"
 
 # Nombre de vols par page. L'API AF/KLM peut retourner des 500 si > ~100.
 # 50 est un compromis stable entre performance et fiabilité.
-PAGE_SIZE = 50
+PAGE_SIZE = 80
 
 # Pause (secondes) entre deux pages consécutives d'une même fenêtre.
 # Évite de déclencher le rate limit de l'API.
-SLEEP_BETWEEN_REQUESTS = 5
+SLEEP_BETWEEN_REQUESTS = 1
 
 # Nombre maximum de tentatives sur erreur 5xx avant de déclarer la page en échec.
 MAX_RETRIES = 5
@@ -44,7 +47,17 @@ MAX_RETRIES = 5
 # Délais de backoff progressifs (secondes) entre chaque retry sur erreur 5xx.
 # Les 5xx AF/KLM sont souvent des throttles déguisés, pas de vraies pannes serveur.
 # La progression laisse le temps au serveur de récupérer.
-RETRY_BACKOFF_500 = [30, 60, 90, 120, 180]
+RETRY_BACKOFF_500 = [5, 10, 15, 20, 30]
+
+# AJOUT METRICS : Dictionnaire d'audit partagé tout au long de l'exécution
+run_report = {
+    "run_id": str(uuid.uuid4()),
+    "job_name": "ingestion_afklm",
+    "layer": "RAW_INBOUND",
+    "pages_recovered": 0,
+    "pages_error_count": 0,
+    "errors_log": []
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -52,7 +65,7 @@ RETRY_BACKOFF_500 = [30, 60, 90, 120, 180]
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fetch_page(
-    api_key: str,
+    api_key: str,  # Conservé pour la signature dlt standard
     start_range: str,
     end_range: str,
     page_number: int = 0,
@@ -73,36 +86,82 @@ def _fetch_page(
         "pageSize":   PAGE_SIZE,
         "pageNumber": page_number,   # Index base-0
     }
-    headers = {
-        "API-Key": api_key,               # Authentification AF/KLM (header, pas Bearer)
-        "Accept": "application/hal+json", # Format HAL+JSON attendu
-    }
 
-    for attempt in range(MAX_RETRIES):
-        try:
-            resp = requests.get(url, params=params, headers=headers, timeout=30)
-            resp.raise_for_status()  # Lève HTTPError sur tout code >= 400
-            return resp.json()
+    # AJOUT : Récupération des deux clés API du fichier .env pour le basculement automatique
+    keys_pool = [
+        os.getenv("AF_CLIENT_ID_1"),
+        os.getenv("AF_CLIENT_ID_2")
+    ]
+    available_keys = [k for k in keys_pool if k]
 
-        except requests.exceptions.RequestException as e:
-            resp_obj = getattr(e, "response", None)
+    if not available_keys:
+        logger.error("[FATAL] Aucune cle API (AF_CLIENT_ID_1 ou AF_CLIENT_ID_2) n'est definie dans l'environnement.")
+        raise ValueError("Variables d'environnement API cles manquantes.")
 
-            # Retry uniquement sur erreurs serveur transitoires
-            if (
-                resp_obj is not None
-                and resp_obj.status_code in (500, 502, 503, 504)
-                and attempt < MAX_RETRIES - 1
-            ):
-                backoff = RETRY_BACKOFF_500[min(attempt, len(RETRY_BACKOFF_500) - 1)]
-                logger.warning(
-                    "Erreur %s (tentative %d/%d), retry dans %ds...",
-                    resp_obj.status_code, attempt + 1, MAX_RETRIES, backoff,
-                )
-                time.sleep(backoff)
-                continue
+    # AJOUT : Boucle de gestion du failover des cles si une erreur de quota (401/403) survient
+    for index, current_key in enumerate(available_keys, start=1):
+        headers = {
+            "API-Key": current_key,
+            "Accept": "application/hal+json", # Format HAL+JSON attendu
+        }
 
-            # Toute autre erreur (4xx, réseau, timeout) → lever immédiatement
-            raise
+        for attempt in range(MAX_RETRIES):
+            try:
+                # AJOUT : Log verbeux requis pour le suivi des pages sur Airflow
+                logger.info(f"[HTTP REQUEST] Fetching Page {page_number} (Cle {index}/{len(available_keys)}) | Fenetre: {start_range} -> {end_range}")
+                
+                resp = requests.get(url, params=params, headers=headers, timeout=30)
+                resp.raise_for_status()  # Lève HTTPError sur tout code >= 400
+                
+                # AJOUT METRICS : Incrémentation du compteur de pages récupérées avec succès
+                run_report["pages_recovered"] += 1
+                
+                # AJOUT : Confirmation de chargement de page
+                logger.info(f"[HTTP SUCCESS] Page {page_number} recuperee avec succes.")
+                return resp.json()
+
+            except requests.exceptions.RequestException as e:
+                resp_obj = getattr(e, "response", None)
+                status_code = resp_obj.status_code if resp_obj is not None else 500
+
+                # AJOUT METRICS : Enregistrement de l'erreur dans la structure d'audit globale
+                run_report["pages_error_count"] += 1
+                run_report["errors_log"].append({"page": page_number, "status": status_code})
+
+                # AJOUT : Interception du dépassement de quota ou authentification invalide (401/403)
+                if resp_obj is not None and resp_obj.status_code in (401, 403):
+                    logger.warning(f"[API KEY ERROR] La cle numero {index} a renvoye un code {resp_obj.status_code} (Quota plein ?).")
+                    if index < len(available_keys):
+                        logger.warning("[FAILOVER] Bascule immediate sur la cle API de secours...")
+                        break  # Quitte les retries de cette clé pour passer à la clé suivante
+                    else:
+                        logger.error("[CRITICAL] La cle de secours a elle aussi echoue. Plus de cles de secours disponibles.")
+                        raise
+
+                # Retry uniquement sur erreurs serveur transitoires
+                if (
+                    resp_obj is not None
+                    and resp_obj.status_code in (500, 502, 503, 504)
+                    and attempt < MAX_RETRIES - 1
+                ):
+                    backoff = RETRY_BACKOFF_500[min(attempt, len(RETRY_BACKOFF_500) - 1)]
+                    logger.warning(
+                        f"[SERVER ERROR] Code {resp_obj.status_code} (Tentative {attempt + 1}/{MAX_RETRIES}). "
+                        f"Pause de securite, nouvel essai dans {backoff}s..."
+                    )
+                    time.sleep(backoff)
+                    continue
+
+                # Toute autre erreur (4xx, réseau, timeout) → lever immédiatement
+                # AJOUT : Log d'erreur fatale
+                logger.error(f"[FATAL EXCEPTION] Echec critique sur la page {page_number} : {e}")
+                raise
+        else:
+            continue
+        continue
+
+    # AJOUT : Si toutes les clés du pool d'environnement échouent
+    raise requests.exceptions.HTTPError("Toutes les cles API Air France-KLM configurees ont ete epuisees.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -138,35 +197,97 @@ def _iter_flights(
         start_range = current.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         end_range   = window_end.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-        logger.info("Fetch window %s → %s", start_range, end_range)
+        # AJOUT : Standardisation du format des logs sans icônes pour Airflow
+        logger.info(f"[PIPELINE WINDOW] Analyse de la periode : {start_range} -> {end_range}")
 
         # Page 0 : contient aussi la métadonnée totalPages
-        data = _fetch_page(api_key, start_range, end_range, 0)
-        total_pages = data.get("page", {}).get("totalPages", 0)
-        flights = data.get("operationalFlights", [])
-        logger.info("  → %d page(s), %d vols (page 0)", total_pages, len(flights))
+        try:
+            data = _fetch_page(api_key, start_range, end_range, 0)
+            total_pages = data.get("page", {}).get("totalPages", 0)
+            flights = data.get("operationalFlights", [])
+            
+            # AJOUT : Message informatif sur les métadonnées de la page 0
+            logger.info(f"[METRICS] Fenetre courante : {total_pages} page(s) trouvee(s), {len(flights)} vols sur la page 0.")
 
-        for flight in flights:
-            yield flight, fetched_at
-
-        # Pages 1 à N-1
-        for page_num in range(1, total_pages):
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
-            try:
-                page_data = _fetch_page(api_key, start_range, end_range, page_num)
-            except requests.exceptions.RequestException as e:
-                # Si une page échoue après tous les retries, on la saute (données partielles
-                # préférées à un run complet en échec). L'erreur est loggée.
-                logger.warning("Page %d échouée après retries, skip : %s", page_num, e)
-                continue
-
-            page_flights = page_data.get("operationalFlights", [])
-            logger.info("  → page %d : %d vols", page_num, len(page_flights))
-            for flight in page_flights:
+            for flight in flights:
                 yield flight, fetched_at
+
+            # Pages 1 à N-1
+            for page_num in range(1, total_pages):
+                # AJOUT : Trace claire du temps d'attente imposé par l'API
+                logger.info(f"[ANTI-THROTTLE] Temporisation de {SLEEP_BETWEEN_REQUESTS}s avant la page {page_num}...")
+                time.sleep(SLEEP_BETWEEN_REQUESTS)
+                try:
+                    page_data = _fetch_page(api_key, start_range, end_range, page_num)
+                except requests.exceptions.RequestException as e:
+                    # Si une page échoue après tous les retries, on la saute (données partielles
+                    # préférées à un run complet en échec). L'erreur est loggée.
+                    logger.warning(f"[PAGE SKIPPED] La page {page_num} a echoue apres retries, skip : {e}")
+                    continue
+
+                page_flights = page_data.get("operationalFlights", [])
+                # AJOUT : Log de comptage des éléments de la page
+                logger.info(f"[DATA] Page {page_num} lue : {len(page_flights)} vols extraits.")
+                for flight in page_flights:
+                    yield flight, fetched_at
+        except Exception as e:
+            logger.error(f"[WINDOW CRITICAL FAILED] Extraction interrompue pour la fenetre courante : {e}")
 
         # Avancer d'un jour pour la prochaine itération
         current = window_end
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AJOUT METRICS : Écriture finale dans logs.job_runs de Supabase
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _write_execution_report_to_supabase():
+    """Insère l'audit quantitatif final dans la table d'historique de production."""
+    logger.info("[AUDIT] Integration du rapport de log dans la table logs.job_runs...")
+    try:
+        # Calcul du statut consolidé
+        if run_report["pages_error_count"] == 0:
+            status = "SUCCESS"
+        elif run_report["pages_recovered"] > 0:
+            status = "PARTIAL"
+        else:
+            status = "FAILED"
+
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432"),
+            database=os.getenv("DB_NAME", "postgres"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            sslmode="require",
+            connect_timeout=10
+        )
+        cur = conn.cursor()
+        
+        query = """
+            INSERT INTO logs.job_runs (
+                id, job_name, layer, status, 
+                pages_recovered, pages_error_count, errors_log, 
+                created_at, execution_date
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), CURRENT_DATE);
+        """
+        
+        cur.execute(query, (
+            run_report["run_id"],
+            run_report["job_name"],
+            run_report["layer"],
+            status,
+            run_report["pages_recovered"],
+            run_report["pages_error_count"],
+            json.dumps(run_report["errors_log"]) # Conversion de la liste en format JSON natif pour postgres
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info(f"[AUDIT SUCCESS] Enregistrement job fait. Status: {status} | ID: {run_report['run_id']}")
+    except Exception as e:
+        logger.error(f"[AUDIT ERROR] Impossible d'ecrire dans logs.job_runs : {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,10 +320,16 @@ def _get_dates(
 
     if last_end:
         start = datetime.fromisoformat(last_end.replace("Z", "+00:00"))
+        # AJOUT : Suivi textuel du mode d'ingestion incrémental
+        logger.info(f"[INCREMENTAL] Reprise automatique dlt depuis le dernier enregistrement : {start.isoformat()}")
     elif start_date:
         start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+        # AJOUT : Suivi textuel du mode d'ingestion à date fixe
+        logger.info(f"[FIXED WINDOW] Utilisation de la date d'initialisation config : {start.isoformat()}")
     else:
         start = datetime.now(timezone.utc) - timedelta(days=1)
+        # AJOUT : Suivi textuel du mode fallback
+        logger.info(f"[FALLBACK] Aucune date trouvee. Ingestion par defaut (Fenetre glissante 24h) : {start.isoformat()}")
 
     end = (
         datetime.fromisoformat(end_date.replace("Z", "+00:00"))
@@ -217,12 +344,7 @@ def _get_dates(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_flights_table(flight: dict, fetched_at: str) -> dict:
-    """Transforme un vol brut en dict pour la table operational_flights.
-
-    Les valeurs sont gardées en types bruts (strings) — le casting en types
-    SQL (DATE, UUID) est délégué à dbt 1_raw (::date, ::uuid).
-    Cela évite les conflits de types entre dlt et les colonnes Supabase.
-    """
+    """Transforme un vol brut en dict pour la table operational_flights."""
     airline = flight.get("airline") or {}  # Guard : "airline" peut être null dans l'API
     return {
         "id":                   flight.get("id"),               # ex. "20260116+AF+0605"
@@ -232,24 +354,13 @@ def _build_flights_table(flight: dict, fetched_at: str) -> dict:
         "airline_name":         airline.get("name"),            # ex. "Air France"
         "haul":                 flight.get("haul"),             # ex. "LONG" ou "SHORT"
         "route":                flight.get("route"),            # ex. ["CDG", "JFK"]
-        # route est une liste → dlt crée automatiquement une table enfant
-        # operational_flights__route (1 ligne par code aéroport).
         "flight_status_public": flight.get("flightStatusPublic"),  # ex. "OnTime", "Delayed"
         "fetched_at":           fetched_at,                     # Horodatage du run
     }
 
 
 def _build_legs_table(flight: dict) -> list[dict]:
-    """Transforme un vol brut en liste de dicts pour la table operational_flight_legs.
-
-    Un vol peut avoir plusieurs segments (legs) : ex. CDG→AMS→JFK = 2 legs.
-    Chaque leg produit une ligne.
-
-    Identifiant de leg : uuid5(NAMESPACE_DNS, "{flight_id}_{i}")
-      - Déterministe : le même leg produit le même UUID à chaque run.
-      - Cela garantit que le merge dlt (primary_key="id") détecte correctement
-        les doublons et fait un UPDATE plutôt qu'un INSERT.
-    """
+    """Transforme un vol brut en liste de dicts pour la table operational_flight_legs."""
     flight_id = flight.get("id")
     rows = []
 
@@ -273,7 +384,7 @@ def _build_legs_table(flight: dict) -> list[dict]:
         rows.append({
             "id":                       leg_id,
             "flight_id":                flight_id,
-            "leg_order":                i,                              # 0 = premier segment
+            "leg_order":                i,                               # 0 = premier segment
             "departure_airport_code":   dep_airport.get("code"),        # ex. "CDG"
             "arrival_airport_code":     arr_airport.get("code"),        # ex. "JFK"
             "departure_airport_name":   dep_airport.get("name"),        # ex. "KASTRUP AIRPORT"
@@ -287,42 +398,24 @@ def _build_legs_table(flight: dict) -> list[dict]:
             "cancelled":                irreg.get("cancelled") == "Y", # Converti en booléen Python
             "aircraft_code":       (leg.get("aircraft") or {}).get("typeCode"),  # ex. "77W"
             "aircraft_name":       (leg.get("aircraft") or {}).get("typeName"),  # ex. "EMBRAER 195 AND LEGACY 1000"
-            "departure_city_code":      dep_city.get("code"), # ex. "PAR"
-            "departure_city_name":      dep_city.get("name"), # ex. "SAVANNAH"
-            "departure_country_code":      dep_country.get("code"), # ex. "FR"
-            "departure_country_name":      dep_country.get("name"), # ex. "FRANCE"
-            "arrival_city_code":      arr_city.get("code"), # ex. "PAR"
-            "arrival_city_name":      arr_city.get("name"), # ex. "SAVANNAH"
-            "arrival_country_code":      arr_country.get("code"), # ex. "FR"
-            "arrival_country_name":      arr_country.get("name"), # ex. "FRANCE"
-
+            "departure_city_code":      dep_city.get("code"), # ex. "PAR"
+            "departure_city_name":      dep_city.get("name"), # ex. "SAVANNAH"
+            "departure_country_code":      dep_country.get("code"), # ex. "FR"
+            "departure_country_name":      dep_country.get("name"), # ex. "FRANCE"
+            "arrival_city_code":      arr_city.get("code"), # ex. "PAR"
+            "arrival_city_name":      arr_city.get("name"), # ex. "SAVANNAH"
+            "arrival_country_code":      arr_country.get("code"), # ex. "FR"
+            "arrival_country_name":      arr_country.get("name"), # ex. "FRANCE"
         })
     return rows
 
 
-
-
 def _build_delays_table(flight: dict) -> list[dict]:
-    """Transforme un vol brut en liste de dicts pour la table operational_flight_delays.
-
-    Un leg peut avoir plusieurs codes retard (ex. retard météo + retard ATC).
-    Chaque code retard produit une ligne.
-
-    L'API AF/KLM renvoie les retards dans deux formats possibles :
-      - Format 1 : "delayInformation": [{"delayCode": "93", "delayDuration": "45"}, ...]
-      - Format 2 : "delayCode": ["93", "72"], "delayDuration": ["45", "20"]
-    Les deux formats sont supportés.
-
-    Identifiant : uuid5(NAMESPACE_DNS, "{flight_id}_{i}_{j}")
-      - i = position du leg, j = position du retard dans le leg
-      - Déterministe pour le merge dlt.
-    """
+    """Transforme un vol brut en liste de dicts pour la table operational_flight_delays."""
     flight_id = flight.get("id")
     rows = []
 
     for i, leg in enumerate(flight.get("flightLegs") or []):
-        # Même UUID que dans _build_legs_table pour assurer la cohérence
-        # entre flight_leg_id ici et id dans operational_flight_legs.
         leg_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}"))
         irreg = leg.get("irregularity") or {}
 
@@ -343,7 +436,7 @@ def _build_delays_table(flight: dict) -> list[dict]:
                 "id":            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_{j}")),
                 "flight_leg_id": leg_id,
                 "delay_code":    d.get("delayCode"),     # Code IATA du retard (ex. "93")
-                "delay_reason":    d.get("delayReasonPublicLangTransl") ,     # ex. "This flight was delayed due to unfavourable we..."
+                "delay_reason":  d.get("delayReasonPublicLangTransl"),     # ex. "This flight was delayed due to unfavourable we..."
                 "delay_duration": d.get("delayDuration"), # Durée en minutes (string)
             })
     return rows
@@ -354,31 +447,13 @@ def _build_delays_table(flight: dict) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 @dlt.resource(name="operational_flights", write_disposition="merge", primary_key="id")
-def operational_flights_resource(flights_rows):
-    """Resource dlt pour operational_flights.
-
-    write_disposition="merge" + primary_key="id" :
-      - Si un vol avec le même id existe déjà → UPDATE (mise à jour du statut, etc.)
-      - Sinon → INSERT
-    Reçoit une liste de dicts pré-construits par _build_flights_table().
-    """
-    yield from flights_rows
-
+def operational_flights_resource(flights_rows): yield from flights_rows
 
 @dlt.resource(name="operational_flight_legs", write_disposition="merge", primary_key="id")
-def operational_flight_legs_resource(legs_rows):
-    """Resource dlt pour operational_flight_legs.
-
-    L'id est un UUID déterministe (uuid5) — le merge fonctionne même si le vol
-    est rechargé plusieurs fois (même UUID généré à partir du même flight_id + position).
-    """
-    yield from legs_rows
-
+def operational_flight_legs_resource(legs_rows): yield from legs_rows
 
 @dlt.resource(name="operational_flight_delays", write_disposition="merge", primary_key="id")
-def operational_flight_delays_resource(delays_rows):
-    """Resource dlt pour operational_flight_delays."""
-    yield from delays_rows
+def operational_flight_delays_resource(delays_rows): yield from delays_rows
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -392,19 +467,10 @@ def afklm_source(
     end_date: str | None = dlt.config.value,
     incremental: bool = True,
 ):
-    """Source dlt AF/KLM : 1 seul fetch API, dispatch vers 3 tables.
-
-    Architecture :
-      - UN seul passage sur l'API (_iter_flights) pour les 3 tables.
-        Si chaque resource appelait _iter_flights séparément → 3× les appels API.
-      - Les 3 listes (flights, legs, delays) sont construites en mémoire puis
-        passées aux resources qui les yield vers dlt.
-      - dlt charge les 3 tables en parallèle (20 workers par défaut).
-        Les contraintes FK ont été supprimées des tables Supabase pour permettre
-        ce chargement parallèle sans erreurs d'ordre d'insertion.
-    """
+    """Source dlt AF/KLM : 1 seul fetch API, dispatch vers 3 tables."""
     start, end = _get_dates(start_date, end_date, incremental)
-    logger.info("Fetching flights %s → %s", start.isoformat(), end.isoformat())
+    # AJOUT : Trace de début d'exécution pour Airflow
+    logger.info(f"[START RUN] Lancement de l'extraction de l'API Air France-KLM du {start.isoformat()} au {end.isoformat()}")
 
     all_flights_rows = []
     all_legs_rows    = []
@@ -416,9 +482,10 @@ def afklm_source(
         all_legs_rows.extend(_build_legs_table(flight))
         all_delays_rows.extend(_build_delays_table(flight))
 
+    # AJOUT : Résumé quantitatif global de la collecte
     logger.info(
-        "Fetch terminé : %d vols, %d legs, %d delays",
-        len(all_flights_rows), len(all_legs_rows), len(all_delays_rows),
+        f"[EXTRACT METRICS SUMMARY] Donnees normalisees pretes a l'envoi — "
+        f"Vols: {len(all_flights_rows)} | Segments (Legs): {len(all_legs_rows)} | Retards (Delays): {len(all_delays_rows)}"
     )
 
     # Yield les 3 resources → dlt les charge en parallèle dans Supabase
@@ -427,8 +494,13 @@ def afklm_source(
     yield operational_flight_delays_resource(all_delays_rows)
 
     # Mémorise la fin de la fenêtre dans le state dlt pour le prochain run incrémental.
-    # Lors du prochain run, _get_dates() lira "last_window_end" et reprendra depuis là.
     try:
         dlt.current.source_state()["last_window_end"] = end.isoformat()
-    except Exception:
-        pass  # Silencieux si le state n'est pas disponible (tests, dry-run)
+        # AJOUT : Confirmation de sauvegarde de l'état
+        logger.info(f"[STATE PERSISTED] Curseur incremental mis a jour avec succes : {end.isoformat()}")
+    except Exception as e:
+        # AJOUT : Log d'alerte non bloquante
+        logger.warning(f"[STATE WARNING] Impossible d'enregistrer l'etat incremental : {e}")
+
+    # AJOUT METRICS : Appel final pour persister le log de performance du Job
+    _write_execution_report_to_supabase()
