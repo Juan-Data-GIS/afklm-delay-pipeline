@@ -353,9 +353,9 @@ def _build_delays_table(flight: dict) -> list[dict]:
                 rows.append({
                     "id": str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_{j}")),
                     "flight_leg_id": leg_id,
-                    "delay_code": d.get("delayCode"),
-                    "delay_reason": d.get("delayReasonPublicLangTransl"),
-                    "delay_duration": d.get("delayDuration"),
+                    "delay_code": d.get("delayCode"), # Code IATA du retard (ex. "93")
+                    "delay_reason": d.get("delayReasonPublicLangTransl"), # ex. "This flight was delayed due to unfavourable we..."
+                    "delay_duration": d.get("delayDuration"), # Durée en minutes (string)
                 })
 
     return rows
