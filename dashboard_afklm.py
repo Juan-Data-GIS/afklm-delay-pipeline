@@ -2,41 +2,11 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
-from datetime import date
 
 # Configuration de la page
-st.set_page_config(page_title="DST Airlines - Control Center", layout="wide")
+st.set_page_config(page_title="DST Airlines - Control Center & ML", layout="wide")
 
-# --- DICTIONNAIRES DE TRADUCTION ---
-AIRLINE_MAPPING = {
-    "AF": "Air France",
-    "KL": "KLM Royal Dutch Airlines",
-    "DL": "Delta Air Lines",
-    "A5": "HOP!",
-    "TO": "Transavia",
-    "VS": "Virgin Atlantic",
-    "KQ": "Kenya Airways",
-    "AM": "Aeroméxico",
-    "G3": "Gol Linhas Aéreas",
-    "UX": "Air Europa",
-    "MU": "China Eastern Airlines",
-    "CZ": "China Southern Airlines"
-}
-
-# Mapping inversé pour retrouver le code IATA à partir du nom (pour l'API)
-REVERSE_MAPPING = {v: k for k, v in AIRLINE_MAPPING.items()}
-
-# --- FONCTION DE RÉCUPÉRATION DES LOGS (DATA OPS) ---
-@st.cache_data(ttl=60)
-def fetch_monitoring_stats():
-    """Récupère les métriques de la table logs.job_runs via FastAPI"""
-    try:
-        response = requests.get("http://fastapi:8000/monitoring-stats", timeout=5)
-        if response.status_code == 200:
-            return response.json()
-    except:
-        pass
-    return {"days": 0, "total_rows": 0, "error_rate": 0, "last_status": "API Down"}
+API_BASE_URL = "http://fastapi:8000"
 
 # --- HEADER ET METADONNÉES ---
 head_col1, head_col2 = st.columns([2.8, 1.2])
@@ -46,34 +16,26 @@ with head_col1:
         """
         <h1 style='display: flex; align-items: center;'>
             <img src='https://img.icons8.com/color/96/000000/control-panel.png' width='50' style='margin-right: 15px;'>
-            DST Airlines : Control Center
+            DST Airlines : Control Center & ML
         </h1>
         """, 
         unsafe_allow_html=True
     )
-    st.subheader("Monitoring en temps réel du trafic Air France-KLM")
-    st.markdown("Dashboard alimenté par la couche **Silver** du Data Warehouse (Supabase).")
+    st.subheader("Observabilité du Pipeline & Analyses Prédictives ML")
+    st.markdown("Dashboard unifié alimenté par l'API FastAPI de production.")
 
 with head_col2:
     logo_sub_col1, logo_sub_col2 = st.columns([1, 1.5], vertical_alignment="center")
-    
     with logo_sub_col1:
         st.image("https://s3-eu-west-1.amazonaws.com/tpd/logos/697a305f794e2f0e63fba37b/0x0.png", width=70)
-
     with logo_sub_col2:
         st.image("https://logo-marque.com/wp-content/uploads/2020/03/Air-France-Logo.png", width=140)
     
     st.markdown(
         """
-        <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #002244; margin-top: 15px;">
-            <p style="margin: 0; font-weight: bold; color: #002244;">🚀 Projet : DST Airlines</p>
-            <p style="margin: 0; font-size: 0.9em;"><strong>Cursus :</strong> Data Engineer</p>
-            <p style="margin: 0; font-size: 0.9em;"><strong>Source :</strong> <a href="https://developer.airfranceklm.com" target="_blank" style="color: #004488; text-decoration: none;">API Développeur AFKLM</a></p>
-            <hr style="margin: 10px 0;">
-            <p style="margin: 0; font-size: 0.85em; font-weight: bold;">Équipe :</p>
-            <p style="margin: 0; font-size: 0.85em;">• Pierre Foulquier</p>
-            <p style="margin: 0; font-size: 0.85em;">• Juan Montenegro</p>
-            <p style="margin: 0; font-size: 0.85em;">• Julien Flactif</p>
+        <div style="background-color: #f0f2f6; padding: 12px; border-radius: 10px; border-left: 5px solid #002244; margin-top: 10px;">
+            <p style="margin: 0; font-weight: bold; color: #002244;">🚀 Cursus : Data Engineer</p>
+            <p style="margin: 0; font-size: 0.85em;">• Pierre Foulquier | Juan Montenegro | Julien Flactif</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -81,180 +43,127 @@ with head_col2:
 
 st.divider()
 
-# --- NOUVELLE SECTION : MONITORING DATA OPS ---
-st.markdown(
-    """
-    <h3 style='display: flex; align-items: center;'>
-        <img src='https://img.icons8.com/color/48/000000/settings.png' width='30' style='margin-right: 10px;'>
-        Data Pipeline Health (Observabilité Logs)
-    </h3>
-    """, unsafe_allow_html=True
-)
+# --- SÉPARATION EN DEUX ONGLETS MAJEURS (SOBRE & DATA ENG) ---
+tab_ops, tab_ml = st.tabs([" Observabilité Pipeline (Data Ops)", "🤖 Analyses Prédictives (Machine Learning)"])
 
-stats_ops = fetch_monitoring_stats()
-m1, m2, m3, m4 = st.columns(4)
+# ==========================================
+# ONGLET 1 : OBSERVABILITÉ (LOGS D'ORCHESTRATION)
+# ==========================================
+with tab_ops:
+    st.markdown(
+        """
+        <h3 style='display: flex; align-items: center;'>
+            <img src='https://img.icons8.com/color/48/000000/settings.png' width='30' style='margin-right: 10px;'>
+            Pipeline Orchestration Logs (logs.airflow_events)
+        </h3>
+        """, unsafe_allow_html=True
+    )
 
-with m1:
-    st.metric("Jours d'ingestion", f"{stats_ops['days']} j", help="Historique disponible en base")
-with m2:
-    st.metric("Lignes Bronze", f"{stats_ops['total_rows']:,}", help="Volume total extrait de l'API")
-with m3:
-    # On inverse la couleur car un taux d'erreur élevé est "mauvais"
-    st.metric("Taux d'échec API", f"{stats_ops['error_rate']}%", delta=f"{stats_ops['error_rate']}%", delta_color="inverse")
-with m4:
-    status_icon = "🟢" if "SUCCESS" in stats_ops['last_status'] else "🔴"
-    st.metric("Statut Pipeline", f"{status_icon} {stats_ops['last_status']}")
+    # Bouton optionnel : vider le cache Streamlit si on veut forcer l'appel API
+    if st.button("Rafraîchir les logs d'orchestration", type="secondary"):
+        st.cache_data.clear()
 
-st.divider()
-
-# --- ZONE DE FILTRES ---
-st.markdown(
-    """
-    <h3 style='display: flex; align-items: center;'>
-        <img src='https://img.icons8.com/color/48/000000/filter--v1.png' width='30' style='margin-right: 10px;'>
-        Paramètres d'analyse
-    </h3>
-    """, 
-    unsafe_allow_html=True
-)
-
-# On place les filtres dans un conteneur stylisé
-with st.container():
-    col_filter1, col_filter2 = st.columns(2)
-    
-    with col_filter1:
-        selected_date = st.date_input("Date du vol", value=date.today())
-        
-    with col_filter2:
-        options_compagnies = ["Toutes les compagnies"] + list(AIRLINE_MAPPING.values())
-        selected_airline_name = st.selectbox("Compagnie aérienne", options=options_compagnies)
-
-# --- GESTION DE LA SESSION ET BOUTON ---
-if 'data_loaded' not in st.session_state:
-    st.session_state['data_loaded'] = False
-
-# Bouton d'action
-if st.button("Actualiser les données avec ces filtres", type="primary", use_container_width=True):
-    st.cache_data.clear()
-    st.session_state['data_loaded'] = True
-    # On sauvegarde les choix pour la requête
-    st.session_state['api_date'] = selected_date.strftime("%Y-%m-%d")
-    st.session_state['api_airline'] = REVERSE_MAPPING.get(selected_airline_name, "ALL")
-
-# --- RÉCUPÉRATION DES DONNÉES MÉTIER ---
-@st.cache_data(ttl=60)
-def fetch_data(query_date, query_airline):
     try:
-        # On passe les filtres en paramètres à FastAPI (ex: ?date=2026-04-29&airline=AF)
-        params = {"date": query_date, "airline": query_airline}
-        response = requests.get("http://fastapi:8000/flight-stats", params=params, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        st.error(f"Erreur de connexion à l'API : {e}")
-        return None
-
-# --- AFFICHAGE DU DASHBOARD ---
-if st.session_state['data_loaded']:
-    
-    with st.spinner("Récupération et calcul des agrégats en cours..."):
-        data = fetch_data(st.session_state['api_date'], st.session_state['api_airline'])
-
-    if data:
-        st.markdown("<br>", unsafe_allow_html=True)
+        # Appel API automatique au chargement de l'onglet
+        response = requests.get(f"{API_BASE_URL}/v1/monitoring/pipeline-logs", timeout=5)
         
-        # --- SECTION 1 : KPIs ---
-        st.markdown(
-            """
-            <h3 style='display: flex; align-items: center;'>
-                <img src='https://img.icons8.com/color/48/000000/combo-chart--v1.png' width='35' style='margin-right: 10px;'>
-                Indicateurs de Performance
-            </h3>
-            """, unsafe_allow_html=True
-        )
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        
-        total_vols = data.get("total_flights", 0)
-        arrived = data.get("statuses", {}).get("ARRIVED", 0)
-        scheduled = data.get("statuses", {}).get("SCHEDULED", 0)
-        completion_rate = (arrived / total_vols * 100) if total_vols > 0 else 0
-
-        kpi1.metric("Vols Traités", f"{total_vols:,}")
-        kpi2.metric("Vols Arrivés", f"{arrived:,}")
-        kpi3.metric("Vols Programmés", f"{scheduled:,}")
-        kpi4.metric("Taux de complétion", f"{completion_rate:.1f}%")
-
-        st.markdown("---")
-
-        # --- SECTION 2 : ANALYSES ---
-        col_left, col_right = st.columns(2)
-
-        with col_left:
-            st.markdown(
-                """
-                <h3 style='display: flex; align-items: center;'>
-                    <img src='https://img.icons8.com/color/48/000000/pie-chart--v1.png' width='30' style='margin-right: 10px;'>
-                    Répartition par Statut
-                </h3>
-                """, unsafe_allow_html=True
-            )
-            status_df = pd.DataFrame(list(data["statuses"].items()), columns=["Statut", "Nombre"])
+        if response.status_code == 200:
+            logs_data = response.json()
             
-            if not status_df.empty:
-                fig_status = px.pie(
-                    status_df, values="Nombre", names="Statut", hole=0.4,
-                    color_discrete_sequence=px.colors.qualitative.Pastel
+            if logs_data:
+                # ÉTAPE CLÉ : On définit proprement df_logs ici
+                df_logs = pd.DataFrame(logs_data)
+                
+                # Calcul de KPIs rapides pour le jury
+                success_count = df_logs['event_type'].str.contains('success', case=False, na=False).sum()
+                total_logs = len(df_logs)
+                
+                kpi_ops1, kpi_ops2 = st.columns(2)
+                kpi_ops1.metric("Derniers événements analysés", total_logs)
+                kpi_ops2.metric("Statuts Success observés", f"{success_count} / {total_logs}")
+                
+                st.markdown("#### 10 derniers événements du pipeline :")
+                # Affichage sécurisé du tableau
+                st.dataframe(
+                    df_logs[["event_at", "level", "layer", "dag_id", "task_id", "event_type", "message"]].head(10),
+                    use_container_width=True
                 )
-                fig_status.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-                st.plotly_chart(fig_status, use_container_width=True)
             else:
-                st.info("Aucune donnée de statut pour ces filtres.")
-
-        with col_right:
-            st.markdown(
-                """
-                <h3 style='display: flex; align-items: center;'>
-                    <img src='https://img.icons8.com/color/48/000000/airplane-take-off.png' width='30' style='margin-right: 10px;'>
-                    Top 5 des Compagnies
-                </h3>
-                """, unsafe_allow_html=True
-            )
-            airlines_df = pd.DataFrame(data["top_airlines"])
-            
-            if not airlines_df.empty:
-                airlines_df["Nom Complet"] = airlines_df["airline_code"].apply(
-                    lambda x: AIRLINE_MAPPING.get(x, f"Autre ({x})")
-                )
-                fig_airlines = px.bar(
-                    airlines_df, x="count", y="Nom Complet", orientation='h', text_auto=True,
-                    labels={"count": "Nombre de vols", "Nom Complet": ""},
-                    color="count", color_continuous_scale="Viridis"
-                )
-                fig_airlines.update_layout(yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig_airlines, use_container_width=True)
-            else:
-                st.info("Aucune donnée de compagnie pour ces filtres.")
-
-        st.markdown("---")
-
-        # --- SECTION 3 : ROUTES ---
-        st.markdown(
-            """
-            <h3 style='display: flex; align-items: center;'>
-                <img src='https://img.icons8.com/color/48/000000/map-marker--v1.png' width='30' style='margin-right: 10px;'>
-                Itinéraires les plus fréquentés
-            </h3>
-            """, unsafe_allow_html=True
-        )
-        routes_df = pd.DataFrame(data["top_routes"])
-        if not routes_df.empty:
-            fig_routes = px.bar(
-                routes_df, x="route", y="count",
-                labels={"count": "Nombre de vols", "route": "Itinéraire (Origine ➔ Destination)"},
-                color="count", color_continuous_scale="Blues"
-            )
-            st.plotly_chart(fig_routes, use_container_width=True)
+                st.info("Aucun log trouvé dans la table logs.airflow_events.")
         else:
-            st.info("Aucune donnée d'itinéraire pour ces filtres.")
-else:
-    st.info("👆 Sélectionnez vos filtres et cliquez sur le bouton pour générer le dashboard.")
+            st.error(" L'API FastAPI est fonctionnelle, mais renvoie une erreur lors de l'accès à Supabase.")
+            with st.expander("Détails techniques"):
+                st.write(response.text)
+                
+    except requests.exceptions.ConnectionError:
+        st.error(" Le conteneur 'fastapi' est inaccessible ou hors ligne dans le réseau Docker.")
+    except Exception as e:
+        st.error(f" Erreur lors de l'affichage des données : {e}")
+# ==========================================
+# ONGLET 2 : ANALYTICS MACHINE LEARNING
+# ==========================================
+with tab_ml:
+    st.markdown(
+        """
+        <h3 style='display: flex; align-items: center;'>
+            <img src='https://img.icons8.com/color/48/000000/brainstorm_skill.png' width='30' style='margin-right: 10px;'>
+            Exploration des prédictions de retards
+        </h3>
+        """, unsafe_allow_html=True
+    )
+    
+    # 1. Menu de sélection des paramètres pour le jury
+    dimension = st.selectbox(
+        "Choisissez l'axe d'analyse pour calculer le taux de retard :",
+        options=["airport", "city", "airline", "date"],
+        format_func=lambda x: {"airport": "Aéroport de départ", "city": "Ville de départ", "airline": "Compagnie aérienne", "date": "Date du vol"}[x]
+    )
+    
+    # 2. Bouton de validation pour déclencher le calcul de l'API
+    if st.button("Calculer les indicateurs de scoring", type="primary"):
+        with st.spinner("Calcul des agrégats ML en cours via FastAPI..."):
+            try:
+                # Requête sur le endpoint dynamique
+                metrics_res = requests.get(f"{API_BASE_URL}/v1/analytics/ml-metrics", params={"dimension": dimension}, timeout=15)
+                matrix_res = requests.get(f"{API_BASE_URL}/v1/analytics/confusion-matrix", timeout=15)
+                
+                if metrics_res.status_code == 200 and matrix_res.status_code == 200:
+                    df_metrics = pd.DataFrame(metrics_res.json())
+                    matrix_data = matrix_res.json()
+                    
+                    st.divider()
+                    
+                    # --- AFFICHAGE DE LA MATRICE DE PERFORMANCE (KPIs) ---
+                    st.markdown("####  Qualité globale des prédictions du modèle (Matrice de Confusion)")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Vrais Positifs (VP)", f"{matrix_data.get('Vrais Positifs (VP)', 0):,}", help="Retards prédits et réellement arrivés")
+                    c2.metric("Vrais Négatifs (VN)", f"{matrix_data.get('Vrais Négatifs (VN)', 0):,}", help="Vols à l'heure prédits et réellement à l'heure")
+                    c3.metric("Faux Positifs (FP)", f"{matrix_data.get('Faux Positifs (FP)', 0):,}", help="Modèle a prédit un retard mais le vol était à l'heure")
+                    c4.metric("Faux Négatifs (FN)", f"{matrix_data.get('Faux Négatifs (FN)', 0):,}", help="Modèle a prédit à l'heure mais le vol était en retard")
+                    
+                    st.divider()
+                    
+                    # --- AFFICHAGE DU GRAPHIQUE ANALYTIQUE ---
+                    st.markdown(f"####  Taux de retard prédit par *{dimension}*")
+                    
+                    # Graphique Plotly Express propre
+                    fig = px.bar(
+                        df_metrics.head(15), # On limite au top 15 pour la lisibilité
+                        x="label", 
+                        y="delayed_share",
+                        labels={"label": "Élément", "delayed_share": "% de retard prédit"},
+                        color="delayed_share",
+                        color_continuous_scale="Reds"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Tableau brut en dessous
+                    st.markdown("Données détaillées :")
+                    st.dataframe(df_metrics, use_container_width=True)
+                    
+                else:
+                    st.error("Erreur lors du calcul des données de scoring par l'API.")
+            except Exception as e:
+                st.error(f"Erreur lors de l'appel API : {e}")
+    else:
+        st.info("💡 Sélectionnez un paramètre ci-dessus et validez pour afficher les résultats du Machine Learning.")

@@ -22,7 +22,8 @@ import dlt
 # depuis la racine du projet (dst_airlines/) plutôt que depuis 1_ingestion/.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from afklm_source import afklm_source, _write_execution_report_to_supabase, run_report
+# CORRECTION : Suppression des imports obsolètes liés à logs.job_runs
+from afklm_source import afklm_source
 
 def main():
     # Force DLT à afficher ses logs dans la console pour Airflow
@@ -68,13 +69,12 @@ def main():
         
     except Exception as e:
         print(f"[DLT ERROR] Échec critique lors du run : {e}", file=sys.stderr)
-        run_report["pages_error_count"] += 1
         raise e
         
     finally:
-        # SÉCURITÉ : Quoi qu'il arrive, on tente d'écrire le log dans logs.job_runs
-        print("[DLT AUDIT] Envoi du rapport d'exécution à Supabase...")
-        _write_execution_report_to_supabase()
+        # CORRECTION : Nettoyage de l'appel obsolète. 
+        # C'est maintenant Airflow qui gère l'écriture centralisée dans logs.airflow_events via callbacks.
+        print("[DLT AUDIT] Fin de la séquence DLT — Traçabilité opérationnelle gérée par Airflow.")
 
 # Permet de conserver l'usage du script en exécution manuelle directe par ton collègue
 if __name__ == "__main__":

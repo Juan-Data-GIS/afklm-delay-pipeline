@@ -21,7 +21,7 @@ DB_NAME = os.getenv("DB_NAME", "postgres")
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # --- INITIALISATION FASTAPI & SQLALCHEMY ---
-app = FastAPI(title="API AFKLM Production & ML Scoring")
+app = FastAPI(title="API AFKLM - Monitoring & Analytics ML")
 engine = create_engine(DATABASE_URL)
 
 # --- CACHE LOCAL POUR LES MODÈLES ML (MLOPS GLOBAL) ---
@@ -33,7 +33,7 @@ ml_models = {
 
 def load_ml_models_from_storage():
     """Télécharge les artefacts Pickle (.pkl) depuis le Storage Supabase."""
-    print("🔄 Chargement des modèles prédictifs depuis Supabase Storage...")
+    print(" Chargement des modèles prédictifs depuis Supabase Storage...")
     urls = {
         "means": os.getenv("MODEL_MEANS_URL"),
         "scaler": os.getenv("MODEL_SCALER_URL"),
@@ -42,18 +42,17 @@ def load_ml_models_from_storage():
     
     for model_name, url in urls.items():
         if not url:
-            print(f"⚠️ Variable d'environnement MODEL_{model_name.upper()}_URL manquante.")
+            print(f" Variable d'environnement MODEL_{model_name.upper()}_URL manquante.")
             continue
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
-            # Utilisation de io.BytesIO pour charger le flux binaire pickle
             ml_models[model_name] = pickle.load(io.BytesIO(response.content))
-            print(f"✅ Modèle ML [{model_name}] chargé avec succès.")
+            print(f" Modèle ML [{model_name}] chargé avec succès.")
         except Exception as e:
-            print(f"❌ Échec du chargement du modèle [{model_name}]: {e}")
+            print(f" Échec du chargement du modèle [{model_name}]: {e}")
 
-# Chargement asynchrone / automatique au démarrage de l'API
+# Chargement automatique au démarrage de l'API
 @app.on_event("startup")
 def startup_event():
     load_ml_models_from_storage()
@@ -63,7 +62,7 @@ def startup_event():
 
 @app.get("/")
 def read_root():
-    # Petit check pour confirmer au jury si l'API possède bien ses modèles ML
+    """Check de santé de l'API et statut des modèles ML pour le jury."""
     models_status = {k: ("OK" if v is not None else "Manquant") for k, v in ml_models.items()}
     return {
         "status": "L'API est en ligne !",
@@ -72,83 +71,110 @@ def read_root():
 
 @app.post("/v1/scoring/reload")
 def reload_scoring():
-    """Endpoint déclenché par le DAG Airflow 2 après les transformations dbt.
-    
-    Il force le rechargement des artefacts ML ou réexécute la logique de scoring.
-    """
+    """Endpoint déclenché par Airflow pour forcer le rechargement des artefacts ML."""
     try:
         load_ml_models_from_storage()
         return {"status": "success", "message": "Artefacts de scoring ML mis à jour avec succès."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors du rafraîchissement ML: {str(e)}")
 
-@app.get("/flight-stats")
-def get_flight_stats(
-    date: Optional[str] = Query(None),
-    airline: Optional[str] = Query(None)
-):
+
+# --- NEW ENDPOINT 1 : MONITORING PIPELINE (LOGS D'ORCHESTRATION) ---
+@app.get("/v1/monitoring/pipeline-logs")
+def get_pipeline_logs():
+    """Récupère l'historique complet de l'orchestration depuis logs.airflow_events."""
     try:
         with engine.connect() as conn:
-            where_clauses = []
-            params = {}
-            
-            # --- FILTRES ---
-            if date:
-                where_clauses.append("CAST(flight_date AS DATE) = CAST(:d AS DATE)")
-                params["d"] = date
-                
-            if airline and airline != "ALL":
-                where_clauses.append("airline_code = :a")
-                params["a"] = airline
-                
-            where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
-            
-            print(f"Exécution requête avec filtres : {where_sql} | Paramètres : {params}")
-            
-            # --- REQUÊTES (Format universel row[0], row[1]) ---
-            total = conn.execute(text(f"SELECT COUNT(*) FROM silver.s_flights {where_sql}"), params).scalar()
-            
-            status_res = conn.execute(text(f"SELECT flight_status, COUNT(*) FROM silver.s_flights {where_sql} GROUP BY flight_status"), params)
-            statuses = {row[0]: row[1] for row in status_res}
-            
-            routes_res = conn.execute(text(f"SELECT origin_iata || ' ➔ ' || destination_iata, COUNT(*) as count FROM silver.s_flights {where_sql} GROUP BY origin_iata, destination_iata ORDER BY count DESC LIMIT 5"), params)
-            top_routes = [{"route": row[0], "count": row[1]} for row in routes_res]
-
-            airlines_res = conn.execute(text(f"SELECT airline_code, COUNT(*) as count FROM silver.s_flights {where_sql} GROUP BY airline_code ORDER BY count DESC LIMIT 5"), params)
-            top_airlines = [{"airline_code": row[0], "count": row[1]} for row in airlines_res]
-
-        return {
-            "total_flights": total or 0,
-            "statuses": statuses,
-            "top_routes": top_routes,
-            "top_airlines": top_airlines
-        }
+            # Correction des colonnes selon le DDL : event_at, "level"
+            query = text("""
+                SELECT id, event_at, level, layer, dag_id, task_id, run_id, event_type, message 
+                FROM logs.airflow_events 
+                ORDER BY event_at DESC 
+                LIMIT 50;
+            """)
+            res = conn.execute(query).mappings().all()
+            return [dict(row) for row in res]
     except Exception as e:
-        print("ERREUR CRITIQUE DANS L'API :")
+        print(f" ERREUR REQUÊTE LOGS : {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- NEW ENDPOINT 2 : ANALYTICS ML PAR PARAMÈTRE (DYNAMIQUE) ---
+@app.get("/v1/analytics/ml-metrics")
+def get_ml_metrics(dimension: str = Query(..., description="Choix de l'axe : airport, city, date, airline")):
+    """Calcule le taux de retard prédit par le ML selon l'axe d'analyse choisi par l'utilisateur."""
+    
+    # Mapping des colonnes SQL selon la dimension sélectionnée sur Streamlit
+    dimension_map = {
+        "airport": ("departure_airport_name", "LEFT JOIN public_mart.dim_airports a ON dd.departure_airport_key = a.airport_key"),
+        "city": ("city_name", "LEFT JOIN public_mart.dim_airports a ON dd.departure_airport_key = a.airport_key"),
+        "date": ("date_key", ""),
+        "airline": ("airline_name", "")
+    }
+    
+    if dimension not in dimension_map:
+        raise HTTPException(status_code=400, detail="Dimension invalide. Choisissez parmi: airport, city, date, airline")
+    
+    col_name, extra_join = dimension_map[dimension]
+    
+    # On extrait uniquement les clés de faits dans la première CTE, puis on récupère les libellés 
+    # textuels (ville, aéroport) depuis la table de dimension 'dim_airports' (a) lors de la jointure.
+    sql_query = f"""
+        WITH delays_and_data AS (
+            SELECT d.delay_predicted, l.departure_airport_key, l.date_key, l.airline_name 
+            FROM public.ml_delays d
+            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS varchar(36)) = l.leg_id
+        ),
+        delays_data_and_airports AS (
+            SELECT dd.* {', a.departure_airport_name, a.city_name' if extra_join else ''} 
+            FROM delays_and_data dd 
+            {extra_join}
+        ) 
+        SELECT {col_name} AS label, 
+               ROUND(SUM(delay_predicted) * 100.0 / NULLIF(COUNT({col_name}), 0), 2) AS delayed_share
+        FROM delays_data_and_airports
+        WHERE {col_name} IS NOT NULL
+        GROUP BY {col_name} 
+        ORDER BY delayed_share DESC;
+    """
+    
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(text(sql_query)).mappings().all()
+            return [dict(row) for row in res]
+    except Exception as e:
+        print(f" ERREUR REQUÊTE ANALYTICS ML ({dimension}) :")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/monitoring-stats")
-def get_monitoring_stats():
+
+# --- NEW ENDPOINT 3 : MATRICE DE CONFUSION / PERFORMANCE DES PRÉDICTIONS ---
+@app.get("/v1/analytics/confusion-matrix")
+def get_confusion_matrix():
+    """Retourne la répartition VP, FP, VN, FN pour évaluer la pertinence du modèle ML."""
+    sql_query = """
+        WITH delays_and_data AS (
+            SELECT
+                CASE
+                    WHEN delay_predicted = 1 AND is_delayed = true THEN 'Vrais Positifs (VP)'
+                    WHEN delay_predicted = 1 AND is_delayed = false THEN 'Faux Positifs (FP)'
+                    WHEN delay_predicted = 0 AND is_delayed = false THEN 'Vrais Négatifs (VN)'
+                    WHEN delay_predicted = 0 AND is_delayed = true THEN 'Faux Négatifs (FN)'
+                    ELSE 'Inconnu'
+                END AS prediction_type
+            FROM public.ml_delays d
+            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS VARCHAR(36)) = l.leg_id
+        )
+        SELECT prediction_type, COUNT(*) AS total
+        FROM delays_and_data
+        GROUP BY prediction_type;
+    """
     try:
         with engine.connect() as conn:
-            query = text("""
-                SELECT 
-                    COUNT(DISTINCT execution_date) as days,
-                    SUM(records_processed) as total_rows,
-                    ROUND(CAST(SUM(records_error) AS NUMERIC) / NULLIF(SUM(records_processed) + SUM(records_error), 0) * 100, 2) as error_rate,
-                    (SELECT status FROM logs.job_runs ORDER BY started_at DESC LIMIT 1) as last_status
-                FROM logs.job_runs
-                WHERE layer = 'BRONZE'
-            """)
-            res = conn.execute(query).mappings().first()
-            
-            return {
-                "days": res["days"] or 0,
-                "total_rows": res["total_rows"] or 0,
-                "error_rate": float(res["error_rate"]) if res["error_rate"] else 0.0,
-                "last_status": res["last_status"] or "N/A"
-            }
+            res = conn.execute(text(sql_query)).mappings().all()
+            # Transformation en dictionnaire simple pour faciliter la lecture côté Streamlit
+            return {row["prediction_type"]: row["total"] for row in res}
     except Exception as e:
-        print(f"ERREUR MONITORING : {e}")
-        return {"days": 0, "total_rows": 0, "error_rate": 0, "last_status": "ERROR"}
+        print(" ERREUR REQUÊTE MATRICE DE CONFUSION :")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))

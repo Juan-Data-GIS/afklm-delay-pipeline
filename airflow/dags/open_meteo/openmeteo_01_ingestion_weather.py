@@ -116,7 +116,8 @@ with DAG(
     default_args=default_args,
     description='Pipeline classique Airflow pour l ingestion meteo vers le schema bronze',
     schedule='0 3 * * *',
-    catchup=True,          
+    catchup=True,
+    is_paused_upon_creation=True,          
     max_active_runs=1  
 ) as dag:
 
