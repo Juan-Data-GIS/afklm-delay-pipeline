@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # Fréquence de collecte des métriques
+
+scrape_configs:
+  - job_name: 'fastapi-service'
+    static_configs:
+      - targets: ['fastapi:8000']
+
+  - job_name: 'docker-containers-cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  - job_name: 'postgres-analytics'
+    static_configs:
+      - targets: ['postgres_exporter:9187']

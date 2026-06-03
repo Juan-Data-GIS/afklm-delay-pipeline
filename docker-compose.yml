@@ -27,11 +27,14 @@ x-airflow-common:
 
   volumes:
     - ./airflow/dags:/opt/airflow/dags
-    - airflow_logs:/opt/airflow/logs # logs sur container / pas sur windows
+    # RECORRECTION 1 : Ajout indispensable des plugins pour qu'Airflow lise monitoring_utils
+    - ./airflow/plugins:/opt/airflow/plugins
+    - airflow_logs:/opt/airflow/logs
     - ./dbt:/opt/airflow/dbt
     - ./docs:/opt/airflow/docs
     - ./ingestion:/opt/airflow/ingestion
-    - ./.dlt:/opt/airflow/.dlt # pour les secrets DLT
+    - ./.dlt:/opt/airflow/.dlt
+    - ./ml:/opt/airflow/ml
 
   networks:
     - airflow-formation-net
@@ -101,13 +104,15 @@ services:
       context: .
       dockerfile: Dockerfile.api
     container_name: afklm-fastapi
-    working_dir: /app                 
+    working_dir: /app                  
     ports:
       - "8000:8000"
     env_file:
       - .env
     volumes:
       - .:/app 
+      # RECORRECTION 2 : On isole l'import de monitoring_utils dans son propre espace propre
+      - ./airflow/plugins:/app/utils
     networks:
       - airflow-formation-net
 
@@ -116,15 +121,93 @@ services:
       context: .
       dockerfile: Dockerfile.streamlit
     container_name: afklm-streamlit
-    working_dir: /app                  
+    working_dir: /app                
     ports:
       - "8501:8501"
     volumes:
-      - .:/app
+      - ./streamlit:/app
+      # RECORRECTION 3 : Évite le conflit d'écrasement de /app, on le monte proprement dans /app/utils
+      - ./airflow/plugins:/app/utils
     networks:
       - airflow-formation-net
     depends_on:
       - fastapi
+    command: streamlit run dashboard_afklm.py --server.port=8501 --server.address=0.0.0.0
+
+  # --- LA PARTIE OBSERVABILITÉ AVEC INJECTION AUTOMATIQUE ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: afklm-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - airflow-formation-net
+    restart: unless-stopped
+    depends_on:
+      - cadvisor
+      - postgres_exporter
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: afklm-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_storage:/var/lib/grafana
+      - ./grafana_provisioning/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana_provisioning/dashboards_provider.yml:/etc/grafana/provisioning/dashboards/dashboards_provider.yml
+      - ./grafana_provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - airflow-formation-net
+    restart: unless-stopped
+
+  postgres_local:
+    image: postgres:15-alpine
+    container_name: postgres_local
+    shm_size: '512mb'
+    environment:
+      POSTGRES_USER: data_engineer
+      POSTGRES_PASSWORD: FormationData2026
+      POSTGRES_DB: data_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+      - ./postgres_init/init_dataops_logs.sql:/docker-entrypoint-initdb.d/init_dataops_logs.sql
+    networks:
+      - airflow-formation-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: afklm-cadvisor
+    ports:
+      - "8082:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - airflow-formation-net
+    devices:
+      - /dev/kmsg
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: afklm-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://data_engineer:FormationData2026@postgres_local:5432/data_hub?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - airflow-formation-net
+    depends_on:
+      - postgres_local
 
 networks:
   airflow-formation-net:
@@ -134,3 +217,5 @@ networks:
 volumes:
   db_data:
   airflow_logs:
+  grafana_storage:
+  postgres_local_data:

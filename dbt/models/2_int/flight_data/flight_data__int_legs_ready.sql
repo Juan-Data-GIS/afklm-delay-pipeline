@@ -67,9 +67,7 @@ with_delay_airport as (
     from with_arr_congestion a
     left join {{ ref('flight_data__int_airport_delays') }} dap
         on a.departure_airport_code = dap.departure_airport_code
-        --and a.flight_schedule_date = dap.flight_schedule_date
         and cast(a.flight_schedule_date as DATE) = cast(dap.flight_schedule_date as DATE)
-
 ),
 with_delay_aircraft as (
     select

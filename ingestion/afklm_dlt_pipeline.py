@@ -18,23 +18,44 @@ from pathlib import Path
 import dlt
 
 # Ajoute le répertoire courant (1_ingestion/) au PYTHONPATH.
-# Sans cela, "from afklm_source import ..." échouerait si le script est lancé
-# depuis la racine du projet (dst_airlines/) plutôt que depuis 1_ingestion/.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# CORRECTION : Suppression des imports obsolètes liés à logs.job_runs
 from afklm_source import afklm_source
 
-def main():
-    # Force DLT à afficher ses logs dans la console pour Airflow
-    # dlt.init_logging(log_level="INFO") -- obsolète car utilisation print(load_info)
+def configure_dlt_destination():
+    """Détermine dynamiquement la base de données cible selon le choix fait dans Airflow.
     
-    # Crée l'objet pipeline dlt.
-    # pipeline_name : identifiant local — le state incrémental est stocké dans
-    #   ~/.dlt/pipelines/afklm/ (à supprimer pour réinitialiser).
-    # destination   : connecteur "postgres" — les credentials sont lus
-    #   automatiquement depuis .dlt/secrets.toml [destination.postgres.credentials].
-    # dataset_name  : schéma PostgreSQL cible ("public" = schéma par défaut Supabase).
+    Injecte la variable d'environnement magique attendue par dlt pour surcharger les secrets.
+    """
+    env_target = os.getenv("ENV_TARGET", "local").strip().lower()
+    
+    print(f"[DLT ROUTING] Cible détectée : {env_target.upper()}")
+    
+    if env_target == "local":
+        # Surcharge dlt pour pointer sur le conteneur Postgres local défini dans Docker Compose
+        connection_url = "postgresql://data_engineer:FormationData2026@postgres_local:5432/data_hub"
+        print("[DLT ROUTING] Écriture configurée sur : Postgres Docker Local (data_hub)")
+    else:
+        # Reconstruction dynamique de l'URL Supabase Cloud à partir des variables globales
+        host = os.getenv('AFKLM_DB_HOST')
+        port = os.getenv('AFKLM_DB_PORT', '5432')
+        user = os.getenv('AFKLM_DB_USER')
+        password = os.getenv('AFKLM_DB_PASSWORD')
+        dbname = os.getenv('AFKLM_DB_NAME', 'postgres')
+        
+        connection_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}?sslmode=require"
+        print(f"[DLT ROUTING] Écriture configurée sur : Supabase Cloud ({host})")
+    
+    # Injection dans la clé de configuration standard de dlt
+    os.environ["DESTINATION__POSTGRES__CREDENTIALS"] = connection_url
+
+
+def main():
+    # 1. Configuration de l'aiguillage réseau avant d'initialiser le pipeline
+    configure_dlt_destination()
+    
+    # 2. Crée l'objet pipeline dlt.
+    # dlt utilisera l'en-tête DESTINATION__POSTGRES__CREDENTIALS injecté juste au-dessus.
     pipeline = dlt.pipeline(
         pipeline_name="afklm",
         destination="postgres",
@@ -56,15 +77,9 @@ def main():
     try:
         print(f"[DLT RUN] Début de l'exécution pour la période : {start_date} -> {end_date}")
         # Lance les 3 phases : Extract → Normalize → Load
-        #   - afklm_source() lit api_key depuis .dlt/secrets.toml
-        #   - En mode de production Airflow, remplace la lecture de .dlt/config.toml par les variables d'environnement
-        #   - En mode incrémental (par défaut), reprend depuis la dernière end_date mémorisée
         load_info = pipeline.run(source_instance)
 
-        # Affiche le résumé du run :
-        #   - Nombre de lignes chargées par table
-        #   - Durée totale
-        #   - Statut des jobs (LOADED / failed)
+        # Affiche le résumé du run (tables, lignes chargées, statuts)
         print(load_info)
         
     except Exception as e:
@@ -72,10 +87,8 @@ def main():
         raise e
         
     finally:
-        # CORRECTION : Nettoyage de l'appel obsolète. 
-        # C'est maintenant Airflow qui gère l'écriture centralisée dans logs.airflow_events via callbacks.
         print("[DLT AUDIT] Fin de la séquence DLT — Traçabilité opérationnelle gérée par Airflow.")
 
-# Permet de conserver l'usage du script en exécution manuelle directe par ton collègue
+# Permet de conserver l'usage du script en exécution manuelle directe
 if __name__ == "__main__":
     main()

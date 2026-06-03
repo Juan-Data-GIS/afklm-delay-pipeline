@@ -3,13 +3,9 @@ afklm_source.py — Source dlt pour l'API Air France/KLM Flight Status.
 
 Responsabilité : Extract & Load (EL) uniquement.
   - Appelle l'API AF/KLM avec pagination par fenêtre temporelle.
-  - Normalise le JSON brut en 3 tables relationnelles :
-      · operational_flights       (1 ligne = 1 vol)
-      · operational_flight_legs   (1 ligne = 1 segment du vol)
-      · operational_flight_delays (1 ligne = 1 code retard par segment)
-  - Un seul passage sur l'API : les 3 tables sont alimentées depuis le même flux.
-
-Ce fichier n'est pas le point d'entrée — voir afklm_dlt_pipeline.py.
+  - Normalise le JSON brut en 3 tables relationnelles.
+  - Résilient aux pannes serveurs (limite à 5 retries max par page avant abandon).
+  - Configuré par défaut sur J-1 complet avec réduction de la verbosité des logs.
 """
 
 import time
@@ -34,16 +30,12 @@ BASE_URL = "https://api.airfranceklm.com/opendata"
 PAGE_SIZE = 90
 
 # Pause (secondes) entre deux pages consécutives d'une même fenêtre.
-SLEEP_BETWEEN_REQUESTS = 3
+SLEEP_BETWEEN_REQUESTS = 1.5
 
 # Nombre maximum de tentatives sur erreur 5xx avant de déclarer la page en échec.
 MAX_RETRIES = 5
 
-# Délais de backoff progressifs (secondes) entre chaque retry sur erreur 5xx.
-RETRY_BACKOFF_500 = [5, 10, 15, 20, 30]
-
 # Index global de la clé active pour l'ensemble du run (base 0)
-# Cette variable persiste entre les appels de pages et ne revient jamais en arrière.
 CURRENT_KEY_INDEX = 0
 
 
@@ -52,29 +44,22 @@ CURRENT_KEY_INDEX = 0
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fetch_page(
-    api_key: str,  # Conservé pour la signature dlt standard
+    api_key: str,  
     start_range: str,
     end_range: str,
     page_number: int = 0,
 ) -> dict:
-    """Appelle l'endpoint /flightstatus pour une fenêtre temporelle et une page données.
-
-    Stratégie d'erreur et de failover :
-      - Utilise CURRENT_KEY_INDEX pour conserver la dernière clé valide connue.
-      - Si une clé renvoie un code 401/403 (quota plein), elle est abandonnée définitivement pour ce run.
-      - 5xx (500, 502, 503, 504) : retry avec backoff progressif sur la même clé.
-    """
+    """Appelle l'endpoint /flightstatus pour une fenêtre temporelle et une page données."""
     global CURRENT_KEY_INDEX
 
     url = f"{BASE_URL}/flightstatus"
     params = {
-        "startRange": start_range,   # Format : "2026-01-16T00:00:00.000Z"
-        "endRange":   end_range,     # Format : "2026-01-16T01:00:00.000Z"
+        "startRange": start_range,
+        "endRange":   end_range,
         "pageSize":   PAGE_SIZE,
-        "pageNumber": page_number,   # Index base-0
+        "pageNumber": page_number,
     }
 
-    # Pool étendu à 5 clés (tes 2 clés d'origine + les 3 clés de ton collègue)
     keys_pool = [
         os.getenv("AF_CLIENT_ID_1"),
         os.getenv("AF_CLIENT_ID_2"),
@@ -88,10 +73,11 @@ def _fetch_page(
         logger.error("[FATAL] Aucune cle API (AF_CLIENT_ID_1 a 5) n'est definie dans l'environnement.")
         raise ValueError("Variables d'environnement API cles manquantes.")
 
-    # La boucle démarre directement à l'index de la dernière clé fonctionnelle
+    attempts = 0
+
     while CURRENT_KEY_INDEX < len(available_keys):
         current_key = available_keys[CURRENT_KEY_INDEX]
-        display_index = CURRENT_KEY_INDEX + 1  # Index base-1 pour l'affichage lisible des logs
+        display_index = CURRENT_KEY_INDEX + 1
 
         headers = {
             "API-Key": current_key,
@@ -99,41 +85,42 @@ def _fetch_page(
         }
 
         try:
-            logger.info(f"[HTTP REQUEST] Fetching Page {page_number} (Cle {display_index}/{len(available_keys)}) | Fenetre: {start_range} -> {end_range}")
+            # Réduction de la verbosité des logs
+            if page_number % 10 == 0:
+                logger.info(f"[HTTP REQUEST] Fetching Page {page_number} (Cle {display_index}/{len(available_keys)})")
             
             resp = requests.get(url, params=params, headers=headers, timeout=30)
             resp.raise_for_status()  
             
-            logger.info(f"[HTTP SUCCESS] Page {page_number} recuperee avec succes.")
             return resp.json()
 
         except requests.exceptions.RequestException as e:
             resp_obj = getattr(e, "response", None)
 
-            # Interception et abandon DÉFINITIF de la clé sur erreur de quota (401/403)
             if resp_obj is not None and resp_obj.status_code in (401, 403):
                 logger.warning(f"[API KEY ERROR] La cle numero {display_index} a renvoye un code {resp_obj.status_code} (Quota plein ?).")
                 
                 if display_index < len(available_keys):
                     logger.warning(f"[FAILOVER] Bascule DEFINITIVE. Passage immediat a la cle numero {display_index + 1}...")
-                    CURRENT_KEY_INDEX += 1  # Incrémentation globale
-                    continue  # Saute directement à la prochaine itération du while avec la clé suivante
+                    CURRENT_KEY_INDEX += 1  
+                    continue  
                 else:
                     logger.error("[CRITICAL] La derniere cle de secours disponible a elle aussi echoue. Plus de cles de secours disponibles.")
                     raise
 
-            # Retry uniquement sur erreurs serveur transitoires (5xx)
             if resp_obj is not None and resp_obj.status_code in (500, 502, 503, 504):
-                # Utilisation d'un mécanisme de retry linéaire simplifié pour le while
-                logger.warning(f"[SERVER ERROR] Code {resp_obj.status_code} rencontre. Nouvelle tentative imminente sur la meme cle...")
-                time.sleep(5)
-                continue
+                attempts += 1
+                if attempts < MAX_RETRIES:
+                    logger.warning(f"[SERVER ERROR] Code {resp_obj.status_code} rencontre. Tentative {attempts}/{MAX_RETRIES}. Nouvelle tentative dans 5s...")
+                    time.sleep(5)
+                    continue
+                else:
+                    logger.error(f"[PAGE TIMEOUT] La page {page_number} a echoue {MAX_RETRIES} fois consecutives avec un code {resp_obj.status_code}.")
+                    raise requests.exceptions.HTTPError(f"Echec persistant 5xx sur la page {page_number}.", response=resp_obj)
 
-            # Toute autre erreur (4xx paramétrage, réseau direct, timeout) → lever immédiatement
             logger.error(f"[FATAL EXCEPTION] Echec critique sur la page {page_number} : {e}")
             raise
 
-    # Si le bloc 'while' prend fin sans retour de données, toutes les clés sont vides
     raise requests.exceptions.HTTPError("Toutes les cles API Air France-KLM configurees ont ete epuisees.")
 
 
@@ -146,55 +133,55 @@ def _iter_flights(
     start_date: datetime,
     end_date: datetime,
 ):
-    """Itère sur tous les vols de la fenêtre [start_date, end_date]."""
-    current = start_date
-
-    # Capture l'heure de début du run une seule fois pour la traçabilité dbt
+    """Itère sur tous les vols de la fenêtre [start_date, end_date] un jour complet à la fois."""
+    current_day = start_date
     fetched_at = datetime.now(timezone.utc).isoformat()
 
-    while current < end_date:
-        window_end = min(current + timedelta(days=1), end_date)
-        start_range = current.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        end_range   = window_end.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    # Découpage atomique jour par jour pour la stabilité temporelle
+    while current_day.date() <= end_date.date():
+        day_start = datetime(current_day.year, current_day.month, current_day.day, 0, 0, 0, tzinfo=timezone.utc)
+        day_end = datetime(current_day.year, current_day.month, current_day.day, 23, 59, 59, tzinfo=timezone.utc)
 
-        logger.info(f"[PIPELINE WINDOW] Analyse de la periode : {start_range} -> {end_range}")
+        start_range = day_start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        end_range   = day_end.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-        # Page 0 : contient aussi la métadonnée totalPages
+        logger.info(f"🚀 [FETCHING DAY] Extraction cible du jour : {day_start.date()}")
+
         try:
             data = _fetch_page(api_key, start_range, end_range, 0)
             total_pages = data.get("page", {}).get("totalPages", 0)
             flights = data.get("operationalFlights", [])
             
-            logger.info(f"[METRICS] Fenetre courante : {total_pages} page(s) trouvee(s), {len(flights)} vols sur la page 0.")
+            logger.info(f"📊 [METRICS] {day_start.date()} : {total_pages} page(s) au total, {len(flights)} vols sur la page 0.")
 
             for flight in flights:
                 yield flight, fetched_at
 
-            # Pages 1 à N-1
             for page_num in range(1, total_pages):
-                logger.info(f"[ANTI-THROTTLE] Temporisation de {SLEEP_BETWEEN_REQUESTS}s avant la page {page_num}...")
+                # Synthèse claire d'avancement toutes les 10 pages
+                if page_num % 10 == 0 or page_num == total_pages - 1:
+                    logger.info(f"  📥 Avancement {day_start.date()} : Page {page_num}/{total_pages} en cours de lecture...")
+                
                 time.sleep(SLEEP_BETWEEN_REQUESTS)
                 try:
                     page_data = _fetch_page(api_key, start_range, end_range, page_num)
                 except requests.exceptions.RequestException as e:
-                    # Si une page échoue après tous les retries, on la saute
-                    logger.warning(f"[PAGE SKIPPED] La page {page_num} a echoue apres retries, skip : {e}")
+                    logger.warning(f"[PAGE SKIPPED] La page {page_num} a echoue. Passage force a la suite. Erreur : {e}")
                     continue
 
                 page_flights = page_data.get("operationalFlights", [])
-                logger.info(f"[DATA] Page {page_num} lue : {len(page_flights)} vols extraits.")
                 for flight in page_flights:
                     yield flight, fetched_at
+                    
         except Exception as e:
-            logger.error(f"[WINDOW CRITICAL FAILED] Extraction interrompue pour la fenetre courante : {e}")
+            logger.error(f"[WINDOW CRITICAL FAILED] Extraction interrompue pour le jour {day_start.date()} : {e}")
             raise e
 
-        # Avancer d'un jour pour la prochaine itération
-        current = window_end
+        current_day += timedelta(days=1)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Gestion de la fenêtre temporelle (incrémental vs fixe)
+# Gestion de la fenêtre temporelle (PRODUCTION READY)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_dates(
@@ -202,7 +189,6 @@ def _get_dates(
     end_date: str | None,
     incremental: bool = True,
 ):
-    """Détermine la fenêtre [start, end] à extraire."""
     state = {}
     try:
         state = dlt.current.source_state()
@@ -211,30 +197,36 @@ def _get_dates(
 
     last_end = state.get("last_window_end") if incremental else None
 
+    # 1. Si dlt a un checkpoint incrémental (exécution continue)
     if last_end:
         start = datetime.fromisoformat(last_end.replace("Z", "+00:00"))
-        logger.info(f"[INCREMENTAL] Reprise automatique dlt depuis le dernier enregistrement : {start.isoformat()}")
-    elif start_date:
-        start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-        logger.info(f"[FIXED WINDOW] Utilisation de la date d'initialisation config : {start.isoformat()}")
+        logger.info(f"[PRODUCTION - INCREMENTAL] Reprise depuis le checkpoint dlt : {start.isoformat()}")
+    
+    # 2. Alignement strict sur la date fournie par l'ordonnanceur (Airflow / Manuel spécifique)
+    elif start_date and str(start_date).strip():
+        parsed_start = datetime.fromisoformat(str(start_date).replace("Z", "+00:00"))
+        start = parsed_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"[ORCHESTRATION - DATE INJECTEE] Alignement strict sur la date de l'orchestrateur : {start.isoformat()}")
+    
+    # 3. Mode secours local (Exécution brute sans argument)
     else:
-        start = datetime.now(timezone.utc) - timedelta(days=1)
-        logger.info(f"[FALLBACK] Aucune date trouvee. Ingestion par defaut (Fenetre glissante 24h) : {start.isoformat()}")
+        now_utc = datetime.now(timezone.utc)
+        hier = now_utc - timedelta(days=1)
+        start = hier.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"[BACKUP LOCAL - J-1] Aucune variable fournie, repli automatique sur J-1 local : {start.isoformat()}")
 
-    end = (
-        datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-        if end_date
-        else datetime.now(timezone.utc)
-    )
+    # Clôture systématique à 23:59:59 de la journée déterminée par le point de départ
+    end = start.replace(hour=23, minute=59, second=59, microsecond=0)
+    logger.info(f"[FENETRE BORNEE] Clôture de la fenêtre d'extraction : {end.isoformat()}")
+        
     return start, end
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Fonctions de normalisation (API JSON → dicts pour dlt)
+# Fonctions de normalisation
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_flights_table(flight: dict, fetched_at: str) -> dict:
-    """Transforme un vol brut en dict pour la table operational_flights."""
     airline = flight.get("airline") or {}
     return {
         "id":                   flight.get("id"),
@@ -250,7 +242,6 @@ def _build_flights_table(flight: dict, fetched_at: str) -> dict:
 
 
 def _build_legs_table(flight: dict) -> list[dict]:
-    """Transforme un vol brut en liste de dicts pour la table operational_flight_legs."""
     flight_id = flight.get("id")
     rows = []
 
@@ -299,7 +290,6 @@ def _build_legs_table(flight: dict) -> list[dict]:
 
 
 def _build_delays_table(flight: dict) -> list[dict]:
-    """Transforme un vol brut en liste de dicts pour la table operational_flight_delays."""
     flight_id = flight.get("id")
     rows = []
 
@@ -353,7 +343,7 @@ def operational_flight_delays_resource(delays_rows): yield from delays_rows
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Source dlt (orchestration)
+# Source dlt (orchestration sécurisée)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @dlt.source(name="afklm")
@@ -363,7 +353,7 @@ def afklm_source(
     end_date: str | None = dlt.config.value,
     incremental: bool = True,
 ):
-    """Source dlt AF/KLM : 1 seul fetch API, dispatch vers 3 tables Supabase."""
+    """Source dlt AF/KLM : extraction robuste isolée, dispatch vers 3 tables."""
     start, end = _get_dates(start_date, end_date, incremental)
     logger.info(f"[START RUN] Lancement de l'extraction de l'API Air France-KLM du {start.isoformat()} au {end.isoformat()}")
 
@@ -371,15 +361,48 @@ def afklm_source(
     all_legs_rows    = []
     all_delays_rows  = []
 
-    for flight, fetched_at in _iter_flights(api_key, start, end):
-        all_flights_rows.append(_build_flights_table(flight, fetched_at))
-        all_legs_rows.extend(_build_legs_table(flight))
-        all_delays_rows.extend(_build_delays_table(flight))
+    # Flag technique pour savoir si le run a échoué en cours de route
+    run_status = "SUCCESS"
 
-    logger.info(
-        f"[EXTRACT METRICS SUMMARY] Donnees normalisees pretes a l'envoi — "
-        f"Vols: {len(all_flights_rows)} | Segments (Legs): {len(all_legs_rows)} | Retards (Delays): {len(all_delays_rows)}"
-    )
+    try:
+        for flight, fetched_at in _iter_flights(api_key, start, end):
+            all_flights_rows.append(_build_flights_table(flight, fetched_at))
+            all_legs_rows.extend(_build_legs_table(flight))
+            all_delays_rows.extend(_build_delays_table(flight))
+    except Exception as extract_error:
+        # En cas d'erreur 500 d'Air France, on intercepte pour forcer l'envoi des logs métiers avant de couper
+        logger.warning(f"[TRAFFIC CONTROL] Interception du crash pour envoi des metriques DataOps. Erreur originelle : {extract_error}")
+        run_status = "FAILED"
+
+    # ---- INJECTION DES METRIQUES POUR GRAFANA CONSOLIDEES (SAUVÉES DU CRASH) ----
+    vols_count = len(all_flights_rows)
+    legs_count = len(all_legs_rows)
+    delays_count = len(all_delays_rows)
+
+    try:
+        import inspect
+        for frame_info in inspect.stack():
+            if 'context' in frame_info.frame.f_locals:
+                context = frame_info.frame.f_locals['context']
+                ti = context['task_instance']
+                
+                # TRANSMISSION DE LA DATE METIER (START) VERS L'OBSERVABILITE CENTRALISEE
+                metrics = {
+                    "event_at": start.strftime("%Y-%m-%d"),
+                    "records_processed": vols_count,
+                    "legs_processed": legs_count,
+                    "delays_processed": delays_count,
+                    "pipeline_engine": "dlt",
+                    "extraction_status": run_status  # Permet à Grafana de savoir si le volume est partiel
+                }
+                ti.xcom_push(key='data_metrics', value=metrics)
+                break
+    except Exception as e:
+        logger.warning(f"[METRICS WARNING] Impossible de pousser les volumes vers Airflow XCom: {e}")
+
+    # Si le run a capoté, on lève l'erreur APRES avoir poussé l'XCom technique
+    if run_status == "FAILED":
+        raise requests.exceptions.HTTPError(f"Echec persistant de l'API Air France sur la journee du {start.date()}. Arret du traitement.")
 
     yield operational_flights_resource(all_flights_rows)
     yield operational_flight_legs_resource(all_legs_rows)

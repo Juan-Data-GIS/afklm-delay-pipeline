@@ -11,8 +11,7 @@ from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOpe
 import sys
 import os
 
-sys.path.insert(0, '/opt/airflow/dags')
-from utils.monitoring_utils import operator_failure_callbacks, log_operator_success
+from monitoring_utils import operator_failure_callbacks, log_operator_success
 
 default_args = {
     'owner': 'afklm_data_engineers',
@@ -22,24 +21,45 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-def run_dlt_script(airflow_start: str, airflow_end: str, logical_date_str: str):
+def run_dlt_script(airflow_start: str, airflow_end: str, logical_date_str: str, env_target: str):
     import sys
     import os
-    from datetime import datetime
+    from datetime import datetime, timedelta
     
     sys.path.insert(0, '/opt/airflow/ingestion')
     os.environ['DLT_PROJECT_DIR'] = '/opt/airflow'
     
+    # Configuration des variables d'environnement cibles
+    env_target = env_target.strip().lower()
+    os.environ["ENV_TARGET"] = env_target
+    os.environ["DBT_TARGET"] = env_target
+    
     airflow_start = airflow_start.strip()
     airflow_end = airflow_end.strip()
     
+    # Logs de debug indispensables pour l'UI Airflow
+    print(f"[DEBUG_DATE] airflow_start reçu : '{airflow_start}'")
+    print(f"[DEBUG_DATE] airflow_end reçu : '{airflow_end}'")
+    print(f"[DEBUG_DATE] logical_date_str reçu : '{logical_date_str}'")
+    
     if not airflow_start:
-        target_date = datetime.fromisoformat(logical_date_str)
+        # Nettoyage de la String pour compatibilité avec le format ISO standard
+        clean_date_str = logical_date_str.replace("Z", "+00:00")
+        reference_date = datetime.fromisoformat(clean_date_str)
+        
+        # FIX J-1 : Si Airflow s'exécute avec la date du jour (ex: 2026-06-03), 
+        # on décale artificiellement à hier (2026-06-02) pour l'API AFKLM
+        target_date = reference_date - timedelta(days=1)
+        
         day_start = target_date.strftime("%Y-%m-%dT00:00:00Z")
         day_end = target_date.strftime("%Y-%m-%dT23:59:59Z")
     else:
+        # Mode Backfill manuel / Paramètres : On respecte STRICTEMENT les inputs saisis
         day_start = f"{airflow_start}T00:00:00Z"
         day_end = f"{airflow_end}T23:59:59Z" if airflow_end else f"{airflow_start}T23:59:59Z"
+    
+    print(f"[ORCHESTRATION] SOURCES__AFKLM__START_DATE calculé : {day_start}")
+    print(f"[ORCHESTRATION] SOURCES__AFKLM__END_DATE calculé : {day_end}")
     
     os.environ["SOURCES__AFKLM__START_DATE"] = day_start
     os.environ["SOURCES__AFKLM__END_DATE"] = day_end
@@ -47,9 +67,12 @@ def run_dlt_script(airflow_start: str, airflow_end: str, logical_date_str: str):
     
     from afklm_dlt_pipeline import main
     main()
-
-def run_verify_script():
+    
+def run_verify_script(env_target: str):
     import sys
+    import os
+    os.environ["ENV_TARGET"] = env_target.strip().lower()
+    
     sys.path.insert(0, '/opt/airflow/ingestion')
     from verify_ingestion import main_verify
     main_verify()
@@ -59,12 +82,18 @@ with DAG(
     'afklm_01_ingestion_data_quality',
     default_args=default_args,
     description='Pipeline ELT AF/KLM - Etape 1 : Ingestion DLT & Data Quality',
-    schedule='@daily',
+    schedule='53 5 * * *', #schedule='@daily',
     catchup=False,
     tags=['afklm', 'ingestion', 'dlt'],
     params={
         "start_date": Param(default="", type="string"),
-        "end_date": Param(default="", type="string"),  
+        "end_date": Param(default="", type="string"),
+        "env_target": Param(
+            default="local", 
+            type="string", 
+            enum=["local", "dev", "prod"],
+            description="Cible d'exécution du pipeline (local = Docker local, dev/prod = Supabase Cloud)"
+        ),
     },
 ) as dag:
 
@@ -72,10 +101,12 @@ with DAG(
         task_id='afklm_el_dlt_pipeline',
         python='/home/airflow/pipeline_venv/bin/python',
         python_callable=run_dlt_script,
+        # TRÈS IMPORTANT : Les clés ici doivent être EXACTEMENT les noms des variables de ta fonction run_dlt_script
         op_kwargs={
             "airflow_start": "{{ params.start_date }}",
             "airflow_end": "{{ params.end_date }}",
-            "logical_date_str": "{{ data_interval_start }}",
+            "logical_date_str": "{{ data_interval_start }}",  # Vérifie bien que la clé s'appelle exactement ainsi
+            "env_target": "{{ params.env_target }}",
         },
         on_failure_callback=operator_failure_callbacks(layer="RAW_INBOUND", event_type="ingestion_failure"),
         on_success_callback=lambda context: log_operator_success(context, layer="RAW_INBOUND", event_type="ingestion_success")
@@ -85,6 +116,9 @@ with DAG(
         task_id='afklm_dq_verify_ingestion',
         python='/home/airflow/pipeline_venv/bin/python',
         python_callable=run_verify_script,
+        op_kwargs={
+            "env_target": "{{ params.env_target }}",
+        },
         on_failure_callback=operator_failure_callbacks(layer="RAW_INBOUND", event_type="quality_check_failure"),
         on_success_callback=lambda context: log_operator_success(context, layer="RAW_INBOUND", event_type="quality_check_success")
     )
@@ -92,6 +126,7 @@ with DAG(
     trigger_next_dag = TriggerDagRunOperator(
         task_id="trigger_transformation_scoring",
         trigger_dag_id="afklm_02_transformation_scoring",
+        conf={"env_target": "{{ params.env_target }}"}, # Transfert de la conf au DAG 2
         wait_for_completion=False,
         on_success_callback=lambda context: log_operator_success(context, layer="ORCHESTRATION", event_type="dag_trigger_success")
     )

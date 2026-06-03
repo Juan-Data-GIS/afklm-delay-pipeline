@@ -1,0 +1,23 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: aws-1-eu-west-1.pooler.supabase.com:5432
+    database: postgres
+    user: postgres.amtxaysrmhlznfwqemdu
+    isDefault: true
+    secureJsonData:
+      password: "FormationData2026"
+    jsonData:
+      sslmode: "require"
+      encrypt: "YES"
+      postgresVersion: 1500
+      timescaledb: false
