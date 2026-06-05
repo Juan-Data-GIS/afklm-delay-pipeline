@@ -3,27 +3,60 @@
 -- Calcule la proportion de vols en retard sur les sept jours précédant une date pour chaque modalité de compagnie aérienne
 -- Est-ce que cette compagnie a tendance à avoir des vols en retard ? 
 -- 1 ligne par (airlineCode, flightScheduleDate).
-{{ config(schema='int', materialized='view') }}
+{{
+  config(
+    schema='int',
+    materialized='incremental',
+    unique_key=['airline_code', 'flight_schedule_date'],
+    partition_by={'field': 'flight_schedule_date', 'data_type': 'date'}
+  )
+}}
 
-with flights_within_7_days as (
-    select
-        f.airline_code,
-        d.delay_duration,
-        cast(f.flight_schedule_date as DATE) ,
-        l.cancelled
-    from {{ ref('flight_data__source_operational_flight_legs') }} l
-    join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
-    where l.cancelled = false
+WITH base AS (
+  SELECT
+    f.airline_code,
+    cast(f.flight_schedule_date as DATE) as flight_schedule_date,
+    CASE WHEN d.delay_duration != '00' THEN 1 ELSE 0 END as is_delayed
+  FROM {{ ref('flight_data__source_operational_flight_legs') }} l
+  JOIN {{ ref('flight_data__source_operational_flights') }} f
+    ON l.flight_id = f.id
+  JOIN {{ ref('flight_data__source_operational_flight_delays') }} d
+    ON l.id = d.flight_leg_id
+  WHERE l.cancelled = 'N'
+  {% if is_incremental() %}
+    AND cast(f.flight_schedule_date as DATE) >= (
+      SELECT COALESCE(
+        MAX(flight_schedule_date) - INTERVAL '7 days',
+        '1970-01-01'::DATE
+      ) FROM {{ this }}
+    )
+  {% endif %}
+),
+
+daily_counts AS (
+  SELECT
+    airline_code,
+    flight_schedule_date,
+    SUM(is_delayed) as delayed_count,
+    COUNT(*) as total_count
+  FROM base
+  GROUP BY airline_code, flight_schedule_date
 )
-select 
-    fsd.airline_code,
-    fsd.flight_schedule_date,
-        sum(CASE WHEN fsd2.delay_duration != '00' THEN 1 ELSE 0 END) * 100.0 /
-        NULLIF(COUNT(fsd2.delay_duration),0) as airline_delayed_share
-FROM flights_within_7_days fsd left join flights_within_7_days fsd2 
-    ON fsd.airline_code = fsd2.airline_code
-        AND fsd2.flight_schedule_date BETWEEN fsd.flight_schedule_date - INTERVAL '7 days' AND fsd.flight_schedule_date
-        GROUP BY
-    fsd.airline_code,
-    fsd.flight_schedule_date
+
+SELECT
+  airline_code,
+  flight_schedule_date,
+  SUM(delayed_count) OVER (
+    PARTITION BY airline_code
+    ORDER BY flight_schedule_date
+    RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+  ) * 100.0 /
+  NULLIF(
+    SUM(total_count) OVER (
+      PARTITION BY airline_code
+      ORDER BY flight_schedule_date
+      RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+    ),
+    0
+  ) as airline_delayed_share
+FROM daily_counts
