@@ -7,7 +7,7 @@ Lit public_mart.fct_flight_legs, prépare les observations et applique le modèl
 import os
 import pickle
 import urllib.request
-
+import datatime as dt
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -119,25 +119,29 @@ def main():
     df_w_pred = df.copy()
     df_w_pred["delay_predicted"] = y_pred
 
+    # Add timestamps 
+    df_w_pred["timestamp"] = pd.Series([dt.datetime.now()] * len(df_w_pred))
+
     create_sql = """
     CREATE TABLE IF NOT EXISTS public.ml_delays (
         leg_id          UUID PRIMARY KEY,
         flight_id       VARCHAR(50),
-        delay_predicted INTEGER
+        delay_predicted INTEGER,
+        timestamp DATETIME
     );
     """
 
     upsert_sql = text(
         """
-        INSERT INTO public.ml_delays (leg_id, flight_id, delay_predicted)
-        VALUES (:leg_id, :flight_id, :delay_predicted)
+        INSERT INTO public.ml_delays (leg_id, flight_id, delay_predicted, timestamp)
+        VALUES (:leg_id, :flight_id, :delay_predicted, :timestamp)
         ON CONFLICT (leg_id) DO UPDATE SET
             flight_id       = EXCLUDED.flight_id,
             delay_predicted = EXCLUDED.delay_predicted
         """
     )
 
-    out = df_w_pred[["leg_id", "flight_id", "delay_predicted"]].copy()
+    out = df_w_pred[["leg_id", "flight_id", "delay_predicted", "timestamp"]].copy()
     out["delay_predicted"] = out["delay_predicted"].astype(int)
     records = out.to_dict(orient="records")
 
