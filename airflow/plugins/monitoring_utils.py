@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 LOGGER = logging.getLogger("airflow.task")
 
-# Table de destination pour la centralisation DataOps
 LOG_TABLE = "logs.airflow_events"
+RUN_TABLE = "logs.pipeline_runs"
 
 _CORE_KEYS = frozenset({
     "app",
@@ -22,7 +22,6 @@ _CORE_KEYS = frozenset({
 
 
 def _get_log_conn_id() -> str:
-    """Détermine dynamiquement la connexion Airflow à utiliser selon la cible."""
     env_target = os.environ.get("ENV_TARGET", "local").strip().lower()
     return "postgres_local" if env_target == "local" else "supabase_prd"
 
@@ -33,23 +32,113 @@ def _db_logging_enabled() -> bool:
 
 def _resolve_run_id(explicit: str | None, payload: dict) -> str | None:
     if explicit:
-        return explicit
+        return str(explicit)
     run_id = payload.get("run_id")
     if run_id:
         return str(run_id)
     try:
         from airflow.sdk import get_current_context
         ctx = get_current_context()
-        if not ctx:
-            return None
-        if ctx.get("run_id"):
+        if ctx and ctx.get("run_id"):
             return str(ctx["run_id"])
         dag_run = ctx.get("dag_run")
         if dag_run is not None and getattr(dag_run, "run_id", None):
             return str(dag_run.run_id)
     except Exception:
-        return None
+        pass
     return None
+
+
+def _extract_date_metier(payload: dict) -> datetime:
+    """Extrait la date métier avec une tolérance maximale pour les backfills et les triggers inter-DAGs."""
+    try:
+        from airflow.sdk import get_current_context
+        ctx = get_current_context()
+        if ctx:
+            dag_run = ctx.get("dag_run")
+            
+            # Vérification dans la conf du Trigger (Cas du DAG 02 déclenché par le DAG 01)
+            if dag_run and dag_run.conf:
+                if dag_run.conf.get("start_date"):
+                    try:
+                        return datetime.fromisoformat(str(dag_run.conf["start_date"]).strip().replace("Z", "+00:00"))
+                    except Exception:
+                        pass
+                if dag_run.conf.get("date_metier"):
+                    try:
+                        return datetime.fromisoformat(str(dag_run.conf["date_metier"]).strip().replace("Z", "+00:00"))
+                    except Exception:
+                        pass
+
+            # Vérification des paramètres du Run (Cas du Trigger manuel avec formulaire)
+            if ctx.get("params") and hasattr(ctx["params"], "get"):
+                p_start = ctx["params"].get("start_date")
+                if p_start:
+                    try:
+                        return datetime.fromisoformat(str(p_start).strip().replace("Z", "+00:00"))
+                    except Exception:
+                        pass
+
+            # Cas du Backfill natif CLI : Utilisation de la date logique du créneau
+            if ctx.get("logical_date"):
+                return ctx["logical_date"]
+            if ctx.get("data_interval_start"):
+                return ctx["data_interval_start"]
+    except Exception as err:
+        LOGGER.debug("Erreur lors de l'extraction de la date métier: %s", err)
+
+    if "event_at" in payload:
+        try:
+            return datetime.strptime(str(payload["event_at"]), "%Y-%m-%d")
+        except Exception:
+            pass
+
+    return datetime.now(timezone.utc)
+
+
+def _persist_pipeline_run(payload: dict, run_id: str, date_metier: datetime) -> None:
+    """Met à jour ou insère l'état d'avancement du pipeline global."""
+    from airflow.providers.postgres.hooks.postgres import PostgresHook
+    
+    dag_id = payload.get("dag_id", "unknown_dag")
+    event_type = payload.get("event_type", "")
+    
+    vols_ingested = int(payload.get("vols_ingested") or 0)
+    transformation_rows = int(payload.get("rows_inserted") or payload.get("transformation_rows") or 0)
+    
+    if vols_ingested == 0 and transformation_rows == 0:
+        records = payload.get("records_processed") or payload.get("row_count") or 0
+        if "dbt" in str(payload.get("task_id")) or payload.get("pipeline_engine") == "dbt" or "dbt" in str(event_type):
+            transformation_rows = int(records)
+        else:
+            vols_ingested = int(records) if records else 0
+
+    status = "RUNNING"
+    if "failure" in str(event_type) or payload.get("level") == "ERROR":
+        status = "FAILED"
+    elif "success" in str(event_type) or "reload" in str(event_type):
+        status = "SUCCESS"
+
+    sql = f"""
+        INSERT INTO {RUN_TABLE} (run_id, dag_id, date_metier, started_at, status, vols_ingested, transformation_rows)
+        VALUES (%s, %s, %s, NOW(), %s, %s, %s)
+        ON CONFLICT (run_id) DO UPDATE SET
+            status = EXCLUDED.status,
+            finished_at = CASE WHEN EXCLUDED.status IN ('SUCCESS', 'FAILED') THEN NOW() ELSE {RUN_TABLE}.finished_at END,
+            duration_sec = CASE WHEN EXCLUDED.status IN ('SUCCESS', 'FAILED') THEN EXTRACT(EPOCH FROM (NOW() - {RUN_TABLE}.started_at))::INTEGER ELSE {RUN_TABLE}.duration_sec END,
+            vols_ingested = CASE WHEN EXCLUDED.vols_ingested > 0 THEN EXCLUDED.vols_ingested ELSE {RUN_TABLE}.vols_ingested END,
+            transformation_rows = CASE WHEN EXCLUDED.transformation_rows > 0 THEN EXCLUDED.transformation_rows ELSE {RUN_TABLE}.transformation_rows END;
+    """
+    
+    try:
+        conn_id = _get_log_conn_id()
+        hook = PostgresHook(postgres_conn_id=conn_id)
+        with hook.get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (run_id, dag_id, date_metier.date(), status, vols_ingested, transformation_rows))
+            conn.commit()
+    except Exception as run_err:
+        LOGGER.warning("[MONITORING ACCÈS LOGS] Impossible d'écrire dans la table pipeline_run: %s", run_err)
 
 
 def _persist_event(payload: dict) -> None:
@@ -99,6 +188,11 @@ def _persist_event(payload: dict) -> None:
             cur.execute(sql, row)
         conn.commit()
 
+    if run_id:
+        payload["run_id"] = run_id
+        date_metier = _extract_date_metier(payload)
+        _persist_pipeline_run(payload, run_id, date_metier)
+
 
 def log_event(
     *,
@@ -112,38 +206,11 @@ def log_event(
     explicit_timestamp: datetime | None = None,
     **extra,
 ) -> None:
-    # 1. Priorité absolue au timestamp explicite (Sera éventuellement écrasé par la date métier J-1/Backfill)
     if explicit_timestamp:
         event_at = explicit_timestamp
     else:
         event_at = datetime.now(timezone.utc)
 
-    # 2. Synchronisation dynamique avec la date métier si fournie par l'XCom (Résolution de ta demande event_at)
-    if extra and "event_at" in extra:
-        try:
-            event_at = datetime.strptime(str(extra["event_at"]), "%Y-%m-%d")
-        except Exception:
-            pass
-    else:
-        try:
-            from airflow.sdk import get_current_context
-            ctx = get_current_context()
-            if ctx:
-                dag_run = ctx.get("dag_run")
-                if dag_run and dag_run.conf and dag_run.conf.get("start_date"):
-                    try:
-                        date_str = dag_run.conf["start_date"]
-                        event_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                    except Exception:
-                        pass
-                elif ctx.get("logical_date"):
-                    event_at = ctx["logical_date"]
-                elif ctx.get("data_interval_start"):
-                    event_at = ctx["data_interval_start"]
-        except Exception as ctx_err:
-            LOGGER.debug("Impossible de capturer le contexte temporel Airflow : %s", ctx_err)
-
-    # 3. Construction du payload final
     payload = {
         "app": "airflow",
         "level": level.upper(),
@@ -158,26 +225,17 @@ def log_event(
     if run_id:
         payload["run_id"] = run_id
 
-    json_payload = json.dumps(payload, default=str)
-    print(json_payload)
-
     try:
         _persist_event(payload)
     except Exception as exc:
         LOGGER.warning("log_event DB persist failed: %s", exc)
 
 
-def log_operator_failure(
-    context,
-    *,
-    layer: str,
-    event_type: str = "task_failure",
-    message: str | None = None,
-) -> None:
+def log_operator_failure(context, *, layer: str, event_type: str = "task_failure", message: str | None = None) -> None:
     ti = context["task_instance"]
+    dr = context.get("dag_run")
     exc = context.get("exception")
     logical_date = context.get("logical_date") or context.get("execution_date")
-
     log_event(
         level="error",
         layer=layer,
@@ -185,52 +243,37 @@ def log_operator_failure(
         dag_id=ti.dag_id,
         task_id=ti.task_id,
         event_type=event_type,
+        run_id=str(dr.run_id) if dr else None,
         explicit_timestamp=logical_date,
         exception=str(exc) if exc else None,
     )
 
 
-def log_operator_success(
-    context,
-    *,
-    layer: str,
-    event_type: str,
-    message: str | None = None,
-) -> None:
+def log_operator_success(context, *, layer: str, event_type: str, message: str | None = None) -> None:
     ti = context["task_instance"]
+    dr = context.get("dag_run")
     row_count = context.get("return_value")
     extra = {}
     
     logical_date = context.get("logical_date") or context.get("execution_date")
 
-    # Récupération dynamique des métriques transmises par le script
     extra_metrics = ti.xcom_pull(task_ids=ti.task_id, key='data_metrics') or {}
     if isinstance(extra_metrics, dict):
         extra.update(extra_metrics)
 
-    if row_count is not None and "row_count" not in extra:
+    if isinstance(row_count, dict):
+        extra.update(row_count)
+    elif row_count is not None and "row_count" not in extra:
         extra["row_count"] = row_count
-
-    records = extra.get("records_processed")
-    legs = extra.get("legs_processed")
-    
-    computed_message = message
-    if not computed_message:
-        if records is not None:
-            if legs is not None:
-                computed_message = f"Pipeline Ingestion REUSSI : {records} vols et {legs} segments synchronises."
-            else:
-                computed_message = f"Pipeline Transformation REUSSI : {records} enregistrements mis a jour."
-        else:
-            computed_message = f"task success for {ti.task_id}"
 
     log_event(
         level="INFO",
         layer=layer,
-        message=computed_message,
+        message=message or f"task success for {ti.task_id}",
         dag_id=ti.dag_id,
         task_id=ti.task_id,
         event_type=event_type,
+        run_id=str(dr.run_id) if dr else None,
         explicit_timestamp=logical_date,
         **extra,
     )
@@ -239,4 +282,10 @@ def log_operator_success(
 def operator_failure_callbacks(*, layer: str, event_type: str = "task_failure"):
     def _log_failure(context):
         log_operator_failure(context, layer=layer, event_type=event_type)
-    return [_log_failure]
+    return _log_failure
+
+
+def operator_success_callbacks(*, layer: str, event_type: str):
+    def _log_success(context):
+        log_operator_success(context, layer=layer, event_type=event_type)
+    return _log_success

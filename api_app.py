@@ -220,7 +220,7 @@ def get_ml_metrics(dimension: str = Query(..., description="Choix de l'axe : air
         WITH delays_and_data AS (
             SELECT d.delay_predicted, l.{col_name}
             FROM public.ml_delays d
-            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS varchar(36)) = l.leg_id
+            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS VARCHAR(36)) = CAST(l.leg_id AS VARCHAR(36))
         )
         SELECT {col_name} AS label, 
                ROUND(SUM(delay_predicted) * 100.0 / NULLIF(COUNT({col_name}), 0), 2) AS delayed_share
@@ -254,7 +254,7 @@ def get_confusion_matrix():
                     ELSE 'Inconnu'
                 END AS prediction_type
             FROM public.ml_delays d
-            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS VARCHAR(36)) = l.leg_id
+            LEFT JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS VARCHAR(36)) = CAST(l.leg_id AS VARCHAR(36))
         )
         SELECT prediction_type, COUNT(*) AS total
         FROM delays_and_data

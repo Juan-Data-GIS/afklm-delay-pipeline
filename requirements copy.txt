@@ -1,8 +1,0 @@
-requests
-python-dotenv
-psycopg2-binary
-apache-airflow-providers-postgres
-apache-airflow-providers-redis
-apache-airflow-providers-celery
-apache-airflow-providers-fab
-dbt-postgres

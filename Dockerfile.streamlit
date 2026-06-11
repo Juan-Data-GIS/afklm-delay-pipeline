@@ -9,7 +9,7 @@ COPY requirements.streamlit.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # On copie le dashboard
-COPY dashboard_afklm.py .
+COPY streamlit/dashboard_afklm.py .
 
 EXPOSE 8501
 

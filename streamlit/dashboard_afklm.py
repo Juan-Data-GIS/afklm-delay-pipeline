@@ -26,6 +26,7 @@ URL_FASTAPI_DOCS = "http://localhost:8000/docs"
 URL_AIRFLOW = "http://localhost:8081"
 URL_PROMETHEUS = "http://localhost:9090"
 URL_GRAFANA = "http://localhost:3000"
+URL_LIORA = "https://learn.datascientest.com/lessons"
 
 # ==============================================================================
 # BARRE LATÉRALE (SIDEBAR) & ECOSYSTÈME TECHNIQUE
@@ -33,23 +34,24 @@ URL_GRAFANA = "http://localhost:3000"
 with st.sidebar:
     st.image("https://logo-marque.com/wp-content/uploads/2020/03/Air-France-Logo.png", width=160)
     
-    st.markdown("### 🏢 Navigation")
+    st.markdown("###  Navigation")
     page = st.radio(
         "Sélection :",
         [
-            "🏠 Accueil & Soutenance", 
-            "📊 Observabilité Pipeline (Data Ops)", 
-            "🤖 Analyses Prédictives (ML)"
+            " Accueil & Soutenance", 
+            " Observabilité Pipeline (Data Ops)", 
+            " Analyses Prédictives (ML)"
         ]
     )
     
     st.divider()
     
-    st.markdown("### 🛠️ Écosystème Technique")
-    st.link_button("📈 Interface Grafana", url=URL_GRAFANA, type="secondary", use_container_width=True)
-    st.link_button("🌪️ Orchestrateur Airflow 3", url=URL_AIRFLOW, type="secondary", use_container_width=True)
-    st.link_button("🔌 Documentation FastAPI", url=URL_FASTAPI_DOCS, type="secondary", use_container_width=True)
-    st.link_button("🔥 Métriques Prometheus", url=URL_PROMETHEUS, type="secondary", use_container_width=True)
+    st.markdown("###  Écosystème Technique")
+    st.link_button(" Orchestrateur Airflow 3", url=URL_AIRFLOW, type="secondary", use_container_width=True)
+    st.link_button(" Interface Grafana", url=URL_GRAFANA, type="secondary", use_container_width=True)
+    st.link_button(" Documentation FastAPI", url=URL_FASTAPI_DOCS, type="secondary", use_container_width=True)
+    st.link_button(" Métriques Prometheus", url=URL_PROMETHEUS, type="secondary", use_container_width=True)
+    st.link_button(" Portail Liora", url=URL_LIORA, type="secondary", use_container_width=True)
     
     st.markdown(
         """
@@ -64,7 +66,7 @@ with st.sidebar:
 # ==============================================================================
 # PAGE 1 : PAGE DE GARDE & PRÉSENTATION (SOUTENANCE)
 # ==============================================================================
-if page == "🏠 Accueil & Soutenance":
+if page == " Accueil & Soutenance":
     
     st.markdown(
         """
@@ -87,7 +89,7 @@ if page == "🏠 Accueil & Soutenance":
         
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("#### 👥 Candidats au Titre (Data Engineer Learners)")
+    st.markdown("####  Candidats au Titre (Data Engineer Learners)")
     c1, c2, c3 = st.columns(3)
     
     with c1:
@@ -101,7 +103,7 @@ if page == "🏠 Accueil & Soutenance":
     
     st.markdown(
         """
-        ### 📋 Périmètre Technique Validé
+        ###  Périmètre Technique Validé
         L'objectif de cette soutenance est de valider le fonctionnement d'un pipeline complet d'ingestion de données de vol de la compagnie Air France-KLM, adossé à un cas d'usage analytique de prédiction de retards (MLOps).
         
         * **Pipeline DataOps :** Ingestion et orchestration multi-couches gérées de bout en bout par **Apache Airflow 3**.
@@ -114,8 +116,8 @@ if page == "🏠 Accueil & Soutenance":
 # ==============================================================================
 # PAGE 2 : OBSERVABILITÉ PIPELINE (DATA OPS)
 # ==============================================================================
-elif page == "📊 Observabilité Pipeline (Data Ops)":
-    st.markdown("### 📊 Rapport de Traitement de Données (DataOps)")
+elif page == " Observabilité Pipeline (Data Ops)":
+    st.markdown("###  Rapport de Traitement de Données (DataOps)")
     st.caption("Suivi des indicateurs de santé et intégrité de l'orchestration.")
 
     if st.button("Rafraîchir la télémétrie SQL", type="secondary"):
@@ -135,7 +137,7 @@ elif page == "📊 Observabilité Pipeline (Data Ops)":
                 with m1:
                     st.metric(label="Fenêtre Temporelle", value=f"{metrics.get('days_covered', 1)} jours")
                 with m2:
-                    st.metric(label="Volume d'Événements Ingestrés", value=f"{metrics.get('total_events', 0)}")
+                    st.metric(label="Volume d'Événements Ingérés", value=f"{metrics.get('total_events', 0)}")
                 with m3:
                     err_rate = metrics.get('error_rate', 0.0)
                     st.metric(
@@ -166,8 +168,8 @@ elif page == "📊 Observabilité Pipeline (Data Ops)":
 # ==============================================================================
 # PAGE 3 : INTERACTION JURY & INFÉRENCE ML (AVEC FILTRE TOP N OPTIMISÉ)
 # ==============================================================================
-elif page == "🤖 Analyses Prédictives (ML)":
-    st.markdown("### 🤖 Analyse d'Inférence Predictive (XGBoost Model)")
+elif page == " Analyses Prédictives (ML)":
+    st.markdown("###  Analyse d'Inférence Predictive (XGBoost Model)")
     st.caption("Simulation et requêtage des indicateurs de retards par axe analytique.")
 
     with st.container(border=True):

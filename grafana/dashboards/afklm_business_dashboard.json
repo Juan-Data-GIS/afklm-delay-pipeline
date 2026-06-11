@@ -1,0 +1,136 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } } },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "value", "wideLayout": true },
+      "pluginVersion": "10.4.2",
+      "targets": [ { "datasource": { "type": "postgres", "uid": "PostgreSQL" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*)::numeric AS value FROM public_mart.fct_flight_legs;", "refId": "A" } ],
+      "title": "Volume Total de Vols Traites (Datamart)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "max": 100, "min": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 25 } ] }, "unit": "percent" } },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "id": 5,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "10.4.2",
+      "targets": [ { "datasource": { "type": "postgres", "uid": "PostgreSQL" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(ROUND(SUM(delay_predicted) * 100.0 / NULLIF(COUNT(*), 0), 1), 0.0)::numeric AS value FROM public.ml_delays;", "refId": "A" } ],
+      "title": "Taux Global de Retards Predits",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } } },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "id": 11,
+      "options": { 
+        "colorMode": "value", 
+        "graphMode": "none", 
+        "justifyMode": "auto", 
+        "orientation": "auto", 
+        "reduceOptions": { 
+          "calcs": [ "lastNotNull" ], 
+          "fields": "/.*/", 
+          "values": true 
+        }, 
+        "showPercentChange": false, 
+        "textMode": "value", 
+        "wideLayout": true 
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [ 
+        { 
+          "datasource": { "type": "postgres", "uid": "PostgreSQL" }, 
+          "editorMode": "code", 
+          "format": "table", 
+          "rawQuery": true, 
+          "rawSql": "SELECT COALESCE(TO_CHAR(MAX(date_metier), 'YYYY-MM-DD'), 'Aucun Run') AS value FROM logs.pipeline_runs WHERE status = 'SUCCESS';", 
+          "refId": "A" 
+        } 
+      ],
+      "title": "Derniere Date Metier Traitee (Fraicheur Ingestion)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } } },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "id": 20,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value" },
+      "pluginVersion": "10.4.2",
+      "targets": [ { "datasource": { "type": "postgres", "uid": "PostgreSQL" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(SUM(vols_ingested), 0)::numeric AS value FROM logs.pipeline_runs;", "refId": "A" } ],
+      "title": "Total Vols Ingestes (KPI Orchestrateur)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "purple", "value": null } ] }, "unit": "m" } },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "id": 21,
+      "title": "Temps Moyen Execution des Pipelines",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "targets": [ { "datasource": { "type": "postgres", "uid": "PostgreSQL" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(ROUND(AVG(duration_sec) / 60.0, 1), 0.0)::numeric AS value FROM logs.pipeline_runs WHERE status = 'SUCCESS';", "refId": "A" } ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value" }
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "light-blue", "value": null } ] } } },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "id": 22,
+      "title": "Vitesse Traitement Globale (Lines/Sec)",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "targets": [ { "datasource": { "type": "postgres", "uid": "PostgreSQL" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(ROUND(SUM(transformation_rows) / NULLIF(SUM(duration_sec), 0)::numeric, 1), 0.0)::numeric AS value FROM logs.pipeline_runs WHERE status = 'SUCCESS' AND duration_sec > 0;", "refId": "A" } ],
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value" }
+    },
+    {
+      "collapsed": false,
+      "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [] } },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 4 },
+      "id": 2,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "show": false }, "showHeader": true },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "PostgreSQL" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT run_id AS \"ID du Run\", dag_id AS \"Nom du Pipeline\", date_metier::text AS \"Date Metier\", started_at::text AS \"Debut Execution\", status AS \"Statut\", vols_ingested AS \"Vols Ingestes\", transformation_rows AS \"Lignes Traitees (dbt/ML)\", finished_at::text AS \"Fin Execution\", duration_sec AS \"Duree (sec)\" FROM logs.pipeline_runs ORDER BY started_at DESC LIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "title": "Historique de Production et Audit d'Orchestration (DataOps Engine)",
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [ "production", "database", "postgres", "business" ],
+  "templating": { "list": [] },
+  "time": { "from": "now-2y", "to": "now" },
+  "timepicker": { "hideTimepicker": false },
+  "timezone": "browser",
+  "title": "AFKLM - Data Platform Repository and Pipelines",
+  "uid": "ffot4rmrkds74c",
+  "version": 36,
+  "weekStart": ""
+}

@@ -1,14 +1,9 @@
-"""
-afklm_02_transformation_scoring.py — Orchestration Transformations dbt & Scoring ML.
-"""
-
 from datetime import datetime, timedelta
+import os
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator, ExternalPythonOperator
-import sys
-import os
 
-from monitoring_utils import operator_failure_callbacks, log_operator_success
+from monitoring_utils import log_event, operator_failure_callbacks
 
 default_args = {
     'owner': 'afklm_analytics_engineers',
@@ -18,162 +13,148 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
+# --- TRACKING FUNCTIONS ---
+def start_trans_tracking():
+    from airflow.sdk import get_current_context
+    ctx = get_current_context()
+    log_event(
+        level="INFO", layer="ORCHESTRATION", message="Demarrage du pipeline de transformation et scoring dbt",
+        dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
+        event_type="dag_started", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date")
+    )
+
+def success_trans_tracking():
+    from airflow.sdk import get_current_context
+    ctx = get_current_context()
+    
+    # Récupération de la volumétrie dbt via XCom
+    dbt_metrics = ctx["task_instance"].xcom_pull(task_ids="afklm_t_dbt_run") or {}
+    records = dbt_metrics.get("records_processed", 0)
+    
+    log_event(
+        level="INFO", layer="TRUSTED", message=f"Pipeline Transformation REUSSI : {records} lignes traitees.",
+        dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
+        event_type="dbt_run_success", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date"),
+        vols_ingested=0,          # <--- Étape 2 : Pas d'ingestion directe, donc 0 vols_ingested
+        rows_inserted=records,     # <--- dbt écrit ici les lignes impactées
+        pipeline_engine="dbt"
+    )
+
+# --- BUSINESS TASKS ---
 def run_dbt_transformation(env_target: str):
-    import sys
     import os
     import json
     from dbt.cli.main import dbtRunner
     
-    # Configuration des répertoires de travail dbt
     os.environ["DBT_PROFILES_DIR"] = "/opt/airflow/dbt"
     os.environ["DBT_PROJECT_DIR"] = "/opt/airflow/dbt"
-    
-    # Alignement forcé de la variable d'environnement lue par profiles.yml
     os.environ["DBT_TARGET"] = env_target.strip().lower()
     
-    cli_args = [
-        "run", 
-        "--profiles-dir", "/opt/airflow/dbt", 
-        "--project-dir", "/opt/airflow/dbt", 
-        "--target", os.environ["DBT_TARGET"]
-    ]
-    
     dbt = dbtRunner()
-    result = dbt.invoke(cli_args)
+    result = dbt.invoke(["run", "--profiles-dir", "/opt/airflow/dbt", "--project-dir", "/opt/airflow/dbt", "--target", os.environ["DBT_TARGET"]])
     
     if not result.success: 
         raise RuntimeError("Echec de la commande dbt run.")
         
-    # ---- EXTRACT METRICS FROM dbt RUN ----
+    total_rows = 0
     try:
         results_path = "/opt/airflow/dbt/target/run_results.json"
         if os.path.exists(results_path):
             with open(results_path, "r") as f:
                 run_results = json.load(f)
-            
-            total_rows = 0
             for res in run_results.get("results", []):
                 rows_affected = res.get("adapter_response", {}).get("rows_affected", 0)
-                if isinstance(rows_affected, int):
-                    total_rows += rows_affected
-                elif isinstance(rows_affected, float):
-                    total_rows += int(rows_affected)
-
-            # Communication du volume traité au Listener Airflow via XCom
-            from airflow.sdk import get_current_context
-            ctx = get_current_context()
-            ti = ctx["task_instance"]
-            
-            ti.xcom_push(key='data_metrics', value={
-                "records_processed": total_rows,
-                "pipeline_engine": "dbt",
-                "data_layer": "trusted"
-            })
-            print(f"[DATAOPS METRICS] Total dbt rows affected: {total_rows}")
+                total_rows += int(rows_affected) if isinstance(rows_affected, (int, float)) else 0
     except Exception as e:
-        print(f"[METRICS WARNING] Impossible d'extraire les volumes de run_results.json: {e}")
+        print(f"[METRICS WARNING] Erreur run_results.json: {e}")
 
+    return {"records_processed": total_rows, "pipeline_engine": "dbt"}
 
 def run_dbt_validation(env_target: str):
-    import sys
     import os
     from dbt.cli.main import dbtRunner
-    
     os.environ["DBT_PROFILES_DIR"] = "/opt/airflow/dbt"
     os.environ["DBT_PROJECT_DIR"] = "/opt/airflow/dbt"
     os.environ["DBT_TARGET"] = env_target.strip().lower()
-    
-    cli_args = [
-        "test", 
-        "--profiles-dir", "/opt/airflow/dbt", 
-        "--project-dir", "/opt/airflow/dbt", 
-        "--target", os.environ["DBT_TARGET"]
-    ]
-    
     dbt = dbtRunner()
-    result = dbt.invoke(cli_args)
+    result = dbt.invoke(["test", "--profiles-dir", "/opt/airflow/dbt", "--project-dir", "/opt/airflow/dbt", "--target", os.environ["DBT_TARGET"]])
     if not result.success: 
         raise RuntimeError("Echec de la commande dbt test.")
 
-
 def run_ml_scoring_pipeline(env_target: str):
-    """Exécute de manière isolée le pipeline d'inférence prédictive XGBoost."""
     import sys
     import os
-    
     os.environ["ENV_TARGET"] = env_target.strip().lower()
-    
-    # Résolution des imports via l'injection du chemin absolu du volume ml monté
     ml_path = "/opt/airflow/ml"
     if ml_path not in sys.path:
         sys.path.insert(0, ml_path)
-            
-    print(f"[DEBUG PATH] Ingestion sys.path reussie pour environnement natif : {sys.path}")
-    
-    from ml_run import main as run_prediction_script
-    run_prediction_script()
-
+    from ml_run import main
+    main()
 
 def _trigger_fastapi(env_target: str):
     import requests
     import os
-    
     os.environ["ENV_TARGET"] = env_target.strip().lower()
-    
-    response = requests.post("http://afklm-fastapi:8000/v1/scoring/reload", timeout=30)
+    response = requests.post("http://afklm-formation-fastapi:8000/v1/scoring/reload", timeout=30)
     response.raise_for_status()
 
+
+# Docs Markdown Loader
+docs_path = os.path.join('/opt/airflow/docs', 'afklm_02_transformation_scoring.md')
+dag_doc_md = ""
+if os.path.exists(docs_path):
+    with open(docs_path, 'r', encoding='utf-8') as f:
+        dag_doc_md = f.read()
 
 with DAG(
     'afklm_02_transformation_scoring',
     default_args=default_args,
+    doc_md=dag_doc_md,
     description='Pipeline ELT AF/KLM - Etape 2 : Transformations DBT & Scoring API',
     schedule=None,
     catchup=False,
     tags=['afklm', 'transformation', 'dbt', 'ml'],
 ) as dag:
 
+    start_tracking = PythonOperator(
+        task_id="log_start_transformation",
+        python_callable=start_trans_tracking
+    )
+
     run_dbt_models = ExternalPythonOperator(
         task_id='afklm_t_dbt_run',
         python='/home/airflow/dbt_venv/bin/python',
         python_callable=run_dbt_transformation,
-        op_kwargs={
-            "env_target": "{{ dag_run.conf.get('env_target', 'local') }}",
-        },
-        on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_run_failure"),
-        on_success_callback=lambda context: log_operator_success(context, layer="TRUSTED", event_type="dbt_run_success")
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_run_failure")
     )
 
     run_dbt_tests = ExternalPythonOperator(
         task_id='afklm_t_dbt_test',
         python='/home/airflow/dbt_venv/bin/python',
         python_callable=run_dbt_validation,
-        op_kwargs={
-            "env_target": "{{ dag_run.conf.get('env_target', 'local') }}",
-        },
-        on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_test_failure"),
-        on_success_callback=lambda context: log_operator_success(context, layer="TRUSTED", event_type="dbt_test_success")
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_test_failure")
     )
 
     compute_ml_predictions = PythonOperator(
         task_id='afklm_ml_compute_predictions',
         python_callable=run_ml_scoring_pipeline,
-        op_kwargs={
-            "env_target": "{{ dag_run.conf.get('env_target', 'local') }}",
-        },
-        on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="ml_scoring_failure"),
-        on_success_callback=lambda context: log_operator_success(context, layer="REFINED", event_type="ml_scoring_success")
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="ml_scoring_failure")
     )
 
     trigger_fastapi_scoring = ExternalPythonOperator(
         task_id='afklm_ml_trigger_fastapi',
         python='/home/airflow/pipeline_venv/bin/python',
         python_callable=_trigger_fastapi,
-        op_kwargs={
-            "env_target": "{{ dag_run.conf.get('env_target', 'local') }}",
-        },
-        on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="fastapi_reload_failure"),
-        on_success_callback=lambda context: log_operator_success(context, layer="REFINED", event_type="fastapi_reload_success")
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="fastapi_reload_failure")
     )
 
-    run_dbt_models >> run_dbt_tests >> compute_ml_predictions >> trigger_fastapi_scoring
+    end_tracking = PythonOperator(
+        task_id="log_success_transformation",
+        python_callable=success_trans_tracking
+    )
+
+    start_tracking >> run_dbt_models >> run_dbt_tests >> compute_ml_predictions >> trigger_fastapi_scoring >> end_tracking

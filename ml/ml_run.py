@@ -32,18 +32,19 @@ MODEL_SCALER_URL = os.getenv("MODEL_SCALER_URL")
 MODEL_XGB_URL = os.getenv("MODEL_XGB_URL")
 HTTP_TIMEOUT = int(os.getenv("MODEL_HTTP_TIMEOUT", "30"))
 
+# --- HARMONISATION SÉCURISÉE EN SNAKE_CASE (CONFORME AUX NOMS DE COLONNES FCT_FLIGHT_LEGS) ---
 FEATURES = [
-    "scheduledFlightDuration",
-    "nbFlightDepartingDepartureAirport",
-    "nbFlightArrivingDepartureAirport",
-    "nbFlightDepartingArrivalAirport",
-    "nbFlightArrivingArrivalAirport",
-    "departureairportdelayedshare",
-    "aircraftdelayedshare",
-    "airlinedelayedshare",
-    "departureMonthDay",
-    "departureWeekDay",
-    "departureHour",
+    "scheduled_flight_duration_minutes",
+    "nb_flight_departing_departure_airport",
+    "nb_flight_arriving_departure_airport",
+    "nb_flight_departing_arrival_airport",
+    "nb_flight_arriving_arrival_airport",
+    "departure_airport_delayed_share",
+    "aircraft_delayed_share",
+    "airline_delayed_share",
+    "departure_monthday",
+    "departure_weekday",
+    "departure_hour",
 ]
 TARGET = "is_delayed"
 
@@ -60,13 +61,11 @@ def _load_pickle_from_url(url: str | None, *, label: str) -> object:
     import pandas as pd
     import numpy as np
 
-    # --- INJECTEUR DE COMPATIBILITÉ UNIVERSELLE ANTI-CRASH PANDAS V1 (SUPABASE) VS V2 (DOCKER) ---
+    # --- INJECTEUR DE COMPATIBILITÉ UNIVERSELLE ANTI-CRASH PANDAS V1 VS V2 ---
     class SafeDataOpsUnpickler(pickle.Unpickler):
         def find_class(self, module, name):
-            # 1. Résolution des types de chaînes obsolètes de Pandas 1.x
             if 'pandas' in module and name == 'StringDtype':
                 return pd.StringDtype
-            # 2. Sécurité : Si l'extension interne de tableau Pandas bloque, on déroute vers numpy
             if module == 'pandas.core.arrays.string_' or 'NDArrayBacked' in name:
                 return np.ndarray
             return super().find_class(module, name)
@@ -76,14 +75,14 @@ def _load_pickle_from_url(url: str | None, *, label: str) -> object:
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
             binary_data = resp.read()
             
-            # Tentative de désérialisation via notre Unpickler de secours personnalisé
             try:
                 obj = SafeDataOpsUnpickler(io.BytesIO(binary_data)).load()
                 
-                # Si l'objet extrait est le DataFrame/Série de moyennes, conversion immédiate en dictionnaire natif
                 if label == "MODEL_MEANS_URL":
                     if isinstance(obj, pd.DataFrame):
-                        return obj.to_dict(orient='records')[0]
+                        # On force la conversion des clés du dictionnaire en minuscules/snake_case si nécessaire
+                        raw_dict = obj.to_dict(orient='records')[0]
+                        return {k.lower().replace("shares", "_share").replace("duration", "_duration_minutes").replace("day", "day").replace("weekday", "_weekday").replace("hour", "_hour"): v for k, v in raw_dict.items()}
                     elif isinstance(obj, pd.Series):
                         return obj.to_dict()
                     elif isinstance(obj, dict):
@@ -91,28 +90,26 @@ def _load_pickle_from_url(url: str | None, *, label: str) -> object:
                 return obj
                 
             except (TypeError, NotImplementedError, AttributeError):
-                # FALLBACK DE PRODUCTION CRITIQUE : En cas d'effondrement des structures binaires Pandas,
-                # injection d'un dictionnaire de primitives calculées historiquement sur le jeu AFKLM.
                 print(f"[ML COMPATIBILITY WARNING] Rupture de compatibilité binaire sur {label}. Application de la stratégie de secours...")
                 
+                # Alignement strict du dictionnaire de secours sur la nomenclature FEATURES
                 default_means = {
-                    "scheduledFlightDuration": 142.5,
-                    "nbFlightDepartingDepartureAirport": 45.0,
-                    "nbFlightArrivingDepartureAirport": 42.0,
-                    "nbFlightDepartingArrivalAirport": 44.0,
-                    "nbFlightArrivingArrivalAirport": 41.0,
-                    "departureairportdelayedshare": 18.4,
-                    "aircraftdelayedshare": 12.1,
-                    "airlinedelayedshare": 14.7,
-                    "departureMonthDay": 15.0,
-                    "departureWeekDay": 3.0,
-                    "departureHour": 12.0
+                    "scheduled_flight_duration_minutes": 142.5,
+                    "nb_flight_departing_departure_airport": 45.0,
+                    "nb_flight_arriving_departure_airport": 42.0,
+                    "nb_flight_departing_arrival_airport": 44.0,
+                    "nb_flight_arriving_arrival_airport": 41.0,
+                    "departure_airport_delayed_share": 18.4,
+                    "aircraft_delayed_share": 12.1,
+                    "airline_delayed_share": 14.7,
+                    "departure_monthday": 15.0,
+                    "departure_weekday": 3.0,
+                    "departure_hour": 12.0
                 }
                 
                 if label == "MODEL_MEANS_URL":
                     return default_means
                 
-                # Ré-essai brut via l'unpickler standard si le Scaler ou le modèle soulève une exception
                 return pickle.loads(binary_data)
                 
     except Exception as e:
@@ -121,9 +118,26 @@ def _load_pickle_from_url(url: str | None, *, label: str) -> object:
 
 
 def load_data(engine) -> pd.DataFrame:
-    """Charge public_mart.fct_flight_legs (vols non annulés)."""
-    query = "SELECT * FROM public_mart.fct_flight_legs WHERE cancelled = false"
-    return pd.read_sql(query, engine)
+    """Charge les données de vols. Supporte élégamment l'absence de la table ml_delays au premier run."""
+    incremental_query = """
+        SELECT l.* FROM public_mart.fct_flight_legs l
+        LEFT JOIN public.ml_delays d ON l.leg_id = d.leg_id
+        WHERE l.cancelled = false AND d.leg_id IS NULL
+    """
+    fallback_query = """
+        SELECT * FROM public_mart.fct_flight_legs 
+        WHERE cancelled = false
+    """
+    try:
+        # Essai en mode incrémental (vitesse maximale en production)
+        return pd.read_sql(incremental_query, engine)
+    except Exception as e:
+        # Si la table ml_delays n'existe pas encore (First Run), on intercepte proprement
+        if "undefinedtable" in str(e).lower() or "does not exist" in str(e).lower():
+            print("[ML MLOPS INFO] Table public.ml_delays non détectée (Premier run à froid). Repli sur le chargement complet.")
+            return pd.read_sql(fallback_query, engine)
+        else:
+            raise e
 
 
 def prepare_for_prediction(df: pd.DataFrame):
@@ -132,51 +146,69 @@ def prepare_for_prediction(df: pd.DataFrame):
     means_df = _load_pickle_from_url(MODEL_MEANS_URL, label="MODEL_MEANS_URL")
     scaler = _load_pickle_from_url(MODEL_SCALER_URL, label="MODEL_SCALER_URL")
 
-    df = df.rename(
-        columns={
-            "scheduled_flight_duration_minutes": "scheduledFlightDuration",
-            "departure_weekday": "departureWeekDay",
-            "departure_hour": "departureHour",
-            "departure_monthday": "departureMonthDay",
-            "nb_flight_departing_departure_airport": "nbFlightDepartingDepartureAirport",
-            "nb_flight_arriving_departure_airport": "nbFlightArrivingDepartureAirport",
-            "nb_flight_departing_arrival_airport": "nbFlightDepartingArrivalAirport",
-            "nb_flight_arriving_arrival_airport": "nbFlightArrivingArrivalAirport",
-            "departure_airport_delayed_share": "departureairportdelayedshare",
-            "aircraft_delayed_share": "aircraftdelayedshare",
-            "airline_delayed_share": "airlinedelayedshare",
+    # --- SÉCURITÉ ACCRUE : Plus besoin de mapper vers le CamelCase obsolète ---
+    # Les colonnes de fct_flight_legs matchent directement nos FEATURES en snake_case.
+    # On applique une normalisation des clés du dictionnaire d'imputation s'il vient de Supabase en CamelCase
+    clean_means = {}
+    if isinstance(means_df, dict):
+        # Cartographie inverse pour traduire l'ancien artefact s'il est au format Supabase
+        mapping_legacy = {
+            "scheduledflightduration": "scheduled_flight_duration_minutes",
+            "nbflightdepartingdepartureairport": "nb_flight_departing_departure_airport",
+            "nbflightarrivingdepartureairport": "nb_flight_arriving_departure_airport",
+            "nbflightdepartingarrivalairport": "nb_flight_departing_arrival_airport",
+            "nbflightarrivingarrivalairport": "nb_flight_arriving_arrival_airport",
+            "departureairportdelayedshare": "departure_airport_delayed_share",
+            "aircraftdelayedshare": "aircraft_delayed_share",
+            "airlinedelayedshare": "airline_delayed_share",
+            "departuremonthday": "departure_monthday",
+            "departureweekday": "departure_weekday",
+            "departurehour": "departure_hour"
         }
-    )
+        for k, v in means_df.items():
+            k_low = k.lower().replace("_", "")
+            clean_key = mapping_legacy.get(k_low, k)
+            clean_means[clean_key] = v
+    else:
+        clean_means = means_df
 
-    # Imputation robuste face aux variations de structures (Dictionnaire natif vs DataFrame)
+    # Imputation robuste
     for col in FEATURES:
-        if isinstance(means_df, dict):
-            fallback_value = means_df.get(col, 0.0)
+        if isinstance(clean_means, dict):
+            fallback_value = clean_means.get(col, 0.0)
         else:
-            fallback_value = means_df[col] if not hasattr(means_df[col], "values") else means_df[col].iloc[0]
+            fallback_value = clean_means[col] if not hasattr(clean_means[col], "values") else clean_means[col].iloc[0]
             
         df[col] = df[col].fillna(fallback_value)
         
     X = df[FEATURES].copy()
-    X_norm = scaler.transform(X)
-    X_norm = pd.DataFrame(X_norm, columns=X.columns, index=X.index)
+    
+    # Adaptation dynamique des colonnes pour le modèle de scaling historique (qui attendait l'ancien ordre/nom)
+    X_legacy_names = X.copy()
+    X_legacy_names.columns = [
+        "scheduledFlightDuration", "nbFlightDepartingDepartureAirport", "nbFlightArrivingDepartureAirport",
+        "nbFlightDepartingArrivalAirport", "nbFlightArrivingArrivalAirport", "departureairportdelayedshare",
+        "aircraftdelayedshare", "airlinedelayedshare", "departureMonthDay", "departureWeekDay", "departureHour"
+    ]
+    
+    X_norm = scaler.transform(X_legacy_names)
+    X_norm_df = pd.DataFrame(X_norm, columns=X_legacy_names.columns, index=X.index)
     y = df[TARGET].values
 
-    return X_norm, y
+    return X_norm_df, y
 
 
 def main():
     engine = create_engine(DB_URI)
     df = load_data(engine)
     if df.empty:
-        print("[ML STATUS] Aucune observation à prédire dans public_mart.fct_flight_legs. Réaliser un dbt run.")
+        print("[ML STATUS] Aucune nouvelle observation à prédire dans fct_flight_legs. En attente de nouvelles données.")
         return
 
     X, y = prepare_for_prediction(df)
     model_ = _load_pickle_from_url(MODEL_XGB_URL, label="MODEL_XGB_URL")
     
-    # --- PATCH DE COMPATIBILITÉ SKLEARN / XGBOOST RÉTROACTIVE (ANTI-CRASH) ---
-    # Ré-injection dynamique de la propriété dépréciée et supprimée de XGBoost 1.7+
+    # --- PATCH DE COMPATIBILITÉ SKLEARN / XGBOOST RÉTROACTIVE ---
     if not hasattr(model_, "use_label_encoder"):
         model_.use_label_encoder = False
         
@@ -212,7 +244,7 @@ def main():
         for row in records:
             conn.execute(upsert_sql, row)
 
-    print(f"[ML RUN REUSSI] {len(df_w_pred)} prédictions enregistrées dans public.ml_delays ({ENV_TARGET.upper()}).")
+    print(f"[ML RUN REUSSI] {len(df_w_pred)} nouvelles prédictions enregistrées dans public.ml_delays ({ENV_TARGET.upper()}).")
 
 
 if __name__ == "__main__":

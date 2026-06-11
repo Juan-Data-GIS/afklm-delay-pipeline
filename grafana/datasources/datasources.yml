@@ -4,20 +4,19 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: http://afklm-formation-prometheus:9090
     isDefault: false
 
   - name: PostgreSQL
     type: postgres
     access: proxy
-    url: aws-1-eu-west-1.pooler.supabase.com:5432
-    database: postgres
-    user: postgres.amtxaysrmhlznfwqemdu
+    url: afklm-formation-postgres-local:5432
+    database: data_hub
+    user: data_engineer
     isDefault: true
     secureJsonData:
       password: "FormationData2026"
     jsonData:
-      sslmode: "require"
-      encrypt: "YES"
+      sslmode: "disable" # Local Docker : pas de SSL
       postgresVersion: 1500
       timescaledb: false
