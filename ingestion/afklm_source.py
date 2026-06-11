@@ -338,14 +338,26 @@ def _build_delays_table(flight: dict) -> list[dict]:
                 for c, d in zip(codes, durations)
             ]
 
-        for j, d in enumerate(delay_infos):
+
+        # Si aucun retard n'est présent dans aucun format
+        if not delay_infos:
             rows.append({
-                "id":            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_{j}")),
+                "id": str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_0")),
                 "flight_leg_id": leg_id,
-                "delay_code":    d.get("delayCode"),     # Code IATA du retard (ex. "93")
-                "delay_reason":    d.get("delayReasonPublicLangTransl") ,     # ex. "This flight was delayed due to unfavourable we..."
-                "delay_duration": d.get("delayDuration"), # Durée en minutes (string)
+                "delay_code": None,
+                "delay_reason": None,
+                "delay_duration": "00",
             })
+        else:
+            for j, d in enumerate(delay_infos):
+                rows.append({
+                    "id": str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{flight_id}_{i}_{j}")),
+                    "flight_leg_id": leg_id,
+                    "delay_code": d.get("delayCode"), # Code IATA du retard (ex. "93")
+                    "delay_reason": d.get("delayReasonPublicLangTransl"), # ex. "This flight was delayed due to unfavourable we..."
+                    "delay_duration": d.get("delayDuration"), # Durée en minutes (string)
+                })
+
     return rows
 
 
