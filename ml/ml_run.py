@@ -7,7 +7,6 @@ Lit public_mart.fct_flight_legs, prépare les observations et applique le modèl
 import os
 import pickle
 import urllib.request
-import datetime as dt
 import pandas as pd
 from sqlalchemy import create_engine, text
 
