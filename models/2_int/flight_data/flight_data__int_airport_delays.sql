@@ -22,7 +22,7 @@ WITH base AS (
     ON l.flight_id = f.id
   JOIN {{ ref('flight_data__source_operational_flight_delays') }} d
     ON l.id = d.flight_leg_id
-  WHERE l.cancelled = 'N'
+  WHERE l.cancelled = false
   {% if is_incremental() %}
     AND cast(f.flight_schedule_date as DATE) >= (
       SELECT COALESCE(
