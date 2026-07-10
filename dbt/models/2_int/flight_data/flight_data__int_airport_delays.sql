@@ -5,18 +5,16 @@
 -- Grain : 1 ligne par (airportCode, flightScheduleDate).
 {{ config(schema='int', materialized='table') }}
 
--- Étape 1 : Pré-agrégation quotidienne par aéroport de départ
 with daily_airport_stats as (
     select
         l.departure_airport_code,
         cast(f.flight_schedule_date as date) as flight_date,
-        case when d.delay_duration != '00' then 1 else 0 end as is_delayed
+        case when d.flight_leg_id is not null and d.delay_duration != '00' then 1 else 0 end as is_delayed
     from {{ ref('flight_data__source_operational_flight_legs') }} l
     join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
+    left join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
     where l.cancelled = false
 )
--- Étape 2 : Calcul de la feature ML glissante sur les 7 derniers jours
 select
     t1.departure_airport_code,
     t1.flight_date as flight_schedule_date,
