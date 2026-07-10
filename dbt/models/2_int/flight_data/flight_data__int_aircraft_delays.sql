@@ -9,10 +9,12 @@ with daily_aircraft_stats as (
     select
         l.aircraft_code,
         cast(f.flight_schedule_date as date) as flight_date,
-        case when d.delay_duration != '00' then 1 else 0 end as is_delayed
+        -- Un vol n'est en retard que si une ligne existe ET que delay_duration est différent de '00'
+        case when d.flight_leg_id is not null and d.delay_duration != '00' then 1 else 0 end as is_delayed
     from {{ ref('flight_data__source_operational_flight_legs') }} l
     join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
+    -- LEFT JOIN capital pour conserver les vols à l'heure !
+    left join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
     where l.cancelled = false and l.aircraft_code is not null
 )
 select 
@@ -20,7 +22,6 @@ select
     t1.flight_date as flight_schedule_date,
     round(sum(t2.is_delayed) * 100.0 / nullif(count(t2.is_delayed), 0), 2) as aircraft_delayed_share
 from daily_aircraft_stats t1
--- Passage en INNER JOIN pour optimiser le plan d'exécution de PostgreSQL
 join daily_aircraft_stats t2 
     on t1.aircraft_code = t2.aircraft_code
     and t2.flight_date between t1.flight_date - interval '7 days' and t1.flight_date
