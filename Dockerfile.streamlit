@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /va
 COPY requirements.streamlit.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# On copie le dashboard
-COPY streamlit/dashboard_afklm.py .
+# On copie l'intégralité du contenu du dossier streamlit_app (scripts, css, sous-dossiers)
+COPY streamlit/ .
 
 EXPOSE 8501
 

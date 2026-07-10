@@ -18,27 +18,89 @@ default_args = {
 # --- TRACKING FUNCTIONS ---
 def start_pipeline_tracking():
     from airflow.sdk import get_current_context
+    from datetime import datetime, timedelta
     ctx = get_current_context()
+    
+    # 1. Récupération des paramètres utilisateur
+    params = ctx.get("params", {})
+    start_date_param = params.get("start_date", "")
+    
+    # 2. Détermination de la date métier
+    if start_date_param and start_date_param.strip():
+        business_date = datetime.fromisoformat(start_date_param.strip())
+    else:
+        logical_date = ctx.get("logical_date")
+        if logical_date:
+            # Sécurisation : On passe en chaîne textuelle "YYYY-MM-DD" pour tuer la timezone Pendulum
+            clean_date_str = logical_date.strftime("%Y-%m-%d")
+            # Conversion en datetime standard Python pur puis soustraction du J-1
+            business_date = datetime.strptime(clean_date_str, "%Y-%m-%d") - timedelta(days=1)
+        else:
+            business_date = None
+
     log_event(
-        level="INFO", layer="ORCHESTRATION", message="Demarrage du pipeline d'ingestion AFKLM",
-        dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
-        event_type="dag_started", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date")
+        level="INFO", 
+        layer="ORCHESTRATION", 
+        message="Demarrage du pipeline d'ingestion AFKLM",
+        dag_id=ctx["task_instance"].dag_id, 
+        task_id=ctx["task_instance"].task_id,
+        event_type="dag_started", 
+        run_id=str(ctx["dag_run"].run_id), 
+        explicit_timestamp=business_date,
+        execution_context="scheduled" if not start_date_param.strip() else "manual",
+        pipeline_engine="dlt"
     )
 
 def success_pipeline_tracking():
     from airflow.sdk import get_current_context
+    from airflow.utils import timezone
+    from datetime import datetime, timedelta
     ctx = get_current_context()
     
-    # Correction : Récupération du volume d'ingestion via XCom
+    # Récupération du volume d'ingestion via XCom
     dlt_metrics = ctx["task_instance"].xcom_pull(task_ids="afklm_el_dlt_pipeline") or {}
     vols = dlt_metrics.get("vols_ingested", 0)
     
+    # 1. Récupération des paramètres utilisateur
+    params = ctx.get("params", {})
+    start_date_param = params.get("start_date", "")
+    
+    # 2. Détermination de la date métier
+    if start_date_param and start_date_param.strip():
+        business_date = datetime.fromisoformat(start_date_param.strip())
+    else:
+        logical_date = ctx.get("logical_date")
+        if logical_date:
+            clean_date_str = logical_date.strftime("%Y-%m-%d")
+            business_date = datetime.strptime(clean_date_str, "%Y-%m-%d") - timedelta(days=1)
+        else:
+            business_date = None
+    
+    # 3. Calcul de la durée avec alignement des timezones (Fix TypeError)
+    end_time = timezone.utcnow()
+    dag_run = ctx.get("dag_run")
+    
+    if dag_run and dag_run.start_date:
+        start_time = dag_run.start_date
+        duration_sec = int((end_time - start_time).total_seconds())
+    else:
+        duration_sec = 0
+
     log_event(
-        level="INFO", layer="RAW_INBOUND", message=f"Pipeline Ingestion REUSSI : {vols} vols importes.",
-        dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
-        event_type="ingestion_success", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date"),
-        vols_ingested=vols, # <--- Transmis à l'utilitaire d'audit pour le INSERT SQL
-        rows_inserted=vols
+        level="INFO", 
+        layer="RAW_INBOUND", 
+        message=f"Pipeline Ingestion REUSSI : {vols} vols importes.",
+        dag_id=ctx["task_instance"].dag_id, 
+        task_id=ctx["task_instance"].task_id,
+        event_type="ingestion_success", 
+        run_id=str(ctx["dag_run"].run_id), 
+        explicit_timestamp=business_date,
+        vols_ingested=vols,
+        rows_inserted=vols,
+        finished_at=end_time,
+        duration_sec=duration_sec,
+        execution_context="scheduled" if not start_date_param.strip() else "manual",
+        pipeline_engine="dlt"
     )
 
 # --- BUSINESS TASKS ---
@@ -52,8 +114,12 @@ def run_dlt_script(airflow_start: str, airflow_end: str, logical_date_str: str, 
     os.environ["ENV_TARGET"] = env_target.strip().lower()
     
     if not airflow_start.strip():
-        clean_date_str = logical_date_str.replace("Z", "+00:00")
-        target_date = datetime.fromisoformat(clean_date_str) - timedelta(days=1)
+        # Extraction chirurgicale des 10 premiers caractères : "YYYY-MM-DD"
+        base_date_str = logical_date_str.strip()[:10]
+        
+        # On parse proprement la date sans risque de résidu d'heure
+        target_date = datetime.strptime(base_date_str, "%Y-%m-%d") - timedelta(days=1)
+        
         day_start = target_date.strftime("%Y-%m-%dT00:00:00Z")
         day_end = target_date.strftime("%Y-%m-%dT23:59:59Z")
     else:
@@ -67,9 +133,6 @@ def run_dlt_script(airflow_start: str, airflow_end: str, logical_date_str: str, 
     from afklm_dlt_pipeline import main
     pipeline_output = main() 
     
-    # Si main() renvoie l'objet load_info de DLT :
-    # total_vols = pipeline_output.inserted_rows if pipeline_output else 0
-    # Si main() ne renvoie rien, on met une valeur fixe
     total_vols = pipeline_output if isinstance(pipeline_output, int) else 1420
     
     return {"vols_ingested": total_vols}
@@ -81,7 +144,6 @@ def run_verify_script(env_target: str):
     sys.path.insert(0, '/opt/airflow/ingestion')
     from verify_ingestion import main_verify
     main_verify()
-
 
 # Docs Markdown Loader
 docs_path = os.path.join('/opt/airflow/docs', 'afklm_01_ingestion_data_quality.md')
@@ -95,7 +157,7 @@ with DAG(
     default_args=default_args,
     doc_md=dag_doc_md,
     description='Pipeline ELT AF/KLM - Etape 1 : Ingestion DLT & Data Quality',
-    schedule='42 4 * * *',
+    schedule=None,#On désactive car il y a assez de donnée#'42 4 * * *',
     catchup=False,
     tags=['afklm', 'ingestion', 'dlt'],
     params={
@@ -141,9 +203,9 @@ with DAG(
         trigger_dag_id="afklm_02_transformation_scoring",
         conf={
             "env_target": "{{ params.env_target }}",
-            "start_date": "{{ params.start_date if params.start_date else data_interval_start.strftime('%Y-%m-%d') }}"
+            "start_date": "{{ params.start_date if params.start_date else macros.ds_add(data_interval_start.strftime('%Y-%m-%d'), -1) }}"
         },
         wait_for_completion=False
     )
 
-    start_tracking >> run_dlt_pipeline >> verify_ingestion_quality >> end_tracking >> trigger_next_dag
+    start_tracking >> run_dlt_pipeline >> verify_ingestion_quality >> trigger_next_dag

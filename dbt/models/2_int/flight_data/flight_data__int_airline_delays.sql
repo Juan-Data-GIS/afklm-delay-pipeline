@@ -6,19 +6,17 @@
 {{ config(
     schema='int', 
     materialized='table',
-    indexes=[
-      {'columns': ['airline_code', 'flight_schedule_date'], 'type': 'btree'}
-    ]
+    indexes=[{'columns': ['airline_code', 'flight_schedule_date'], 'type': 'btree'}]
 ) }}
 
 with daily_airline_stats as (
     select
         f.airline_code,
         cast(f.flight_schedule_date as date) as flight_date,
-        case when d.delay_duration != '00' then 1 else 0 end as is_delayed
+        case when d.flight_leg_id is not null and d.delay_duration != '00' then 1 else 0 end as is_delayed
     from {{ ref('flight_data__source_operational_flight_legs') }} l
     join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
+    left join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
     where l.cancelled = false and f.airline_code is not null
 )
 select 
