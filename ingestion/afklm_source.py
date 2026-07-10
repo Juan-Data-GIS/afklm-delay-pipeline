@@ -145,14 +145,14 @@ def _iter_flights(
         start_range = day_start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         end_range   = day_end.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-        logger.info(f"🚀 [FETCHING DAY] Extraction cible du jour : {day_start.date()}")
+        logger.info(f" [FETCHING DAY] Extraction cible du jour : {day_start.date()}")
 
         try:
             data = _fetch_page(api_key, start_range, end_range, 0)
             total_pages = data.get("page", {}).get("totalPages", 0)
             flights = data.get("operationalFlights", [])
             
-            logger.info(f"📊 [METRICS] {day_start.date()} : {total_pages} page(s) au total, {len(flights)} vols sur la page 0.")
+            logger.info(f" [METRICS] {day_start.date()} : {total_pages} page(s) au total, {len(flights)} vols sur la page 0.")
 
             for flight in flights:
                 yield flight, fetched_at
@@ -160,7 +160,7 @@ def _iter_flights(
             for page_num in range(1, total_pages):
                 # Synthèse claire d'avancement toutes les 10 pages
                 if page_num % 10 == 0 or page_num == total_pages - 1:
-                    logger.info(f"  📥 Avancement {day_start.date()} : Page {page_num}/{total_pages} en cours de lecture...")
+                    logger.info(f"   Avancement {day_start.date()} : Page {page_num}/{total_pages} en cours de lecture...")
                 
                 time.sleep(SLEEP_BETWEEN_REQUESTS)
                 try:
