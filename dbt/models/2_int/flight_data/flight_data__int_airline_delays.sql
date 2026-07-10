@@ -2,7 +2,7 @@
 -- Feature ML : Proportion de retards sur les sept derniers jours pour chaque compagnie 
 -- Calcule la proportion de vols en retard sur les sept jours précédant une date pour chaque modalité de compagnie aérienne
 -- Est-ce que cette compagnie a tendance à avoir des vols en retard ? 
--- 1 ligne par (airlineCode, flightScheduleDate).
+-- 1 ligne par (airlineCode, flightScheduleDate) .
 {{ config(
     schema='int', 
     materialized='table',
