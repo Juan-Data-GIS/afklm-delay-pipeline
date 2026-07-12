@@ -3,27 +3,28 @@
 -- Calcule la proportion de vols en retard sur les sept jours précédant une date pour chaque modalité de compagnie aérienne
 -- Est-ce que cette compagnie a tendance à avoir des vols en retard ? 
 -- 1 ligne par (airlineCode, flightScheduleDate).
-{{ config(schema='int', materialized='view') }}
+{{ config(
+    schema='int', 
+    materialized='table',
+    indexes=[{'columns': ['airline_code', 'flight_schedule_date'], 'type': 'btree'}]
+) }}
 
-with flights_within_7_days as (
+with daily_airline_stats as (
     select
         f.airline_code,
-        d.delay_duration,
-        cast(f.flight_schedule_date as DATE) ,
-        l.cancelled
+        cast(f.flight_schedule_date as date) as flight_date,
+        case when d.flight_leg_id is not null and d.delay_duration != '00' then 1 else 0 end as is_delayed
     from {{ ref('flight_data__source_operational_flight_legs') }} l
     join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
-    where l.cancelled = false
+    left join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
+    where l.cancelled = false and f.airline_code is not null
 )
 select 
-    fsd.airline_code,
-    fsd.flight_schedule_date,
-        sum(CASE WHEN fsd2.delay_duration != '00' THEN 1 ELSE 0 END) * 100.0 /
-        NULLIF(COUNT(fsd2.delay_duration),0) as airline_delayed_share
-FROM flights_within_7_days fsd left join flights_within_7_days fsd2 
-    ON fsd.airline_code = fsd2.airline_code
-        AND fsd2.flight_schedule_date BETWEEN fsd.flight_schedule_date - INTERVAL '7 days' AND fsd.flight_schedule_date
-        GROUP BY
-    fsd.airline_code,
-    fsd.flight_schedule_date
+    t1.airline_code,
+    t1.flight_date as flight_schedule_date,
+    round(sum(t2.is_delayed) * 100.0 / nullif(count(t2.is_delayed), 0), 2) as airline_delayed_share
+from daily_airline_stats t1
+join daily_airline_stats t2 
+    on t1.airline_code = t2.airline_code
+    and t2.flight_date between t1.flight_date - interval '7 days' and t1.flight_date
+group by t1.airline_code, t1.flight_date

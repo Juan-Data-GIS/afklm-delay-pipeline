@@ -33,7 +33,7 @@ models:
       +materialized: view
     2_int:
       +schema: int
-      +materialized: view
+      +materialized: table     # On fige physiquement les calculs de features ML
     3_mart:
       +schema: mart
       +materialized: table
