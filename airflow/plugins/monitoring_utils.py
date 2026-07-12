@@ -50,14 +50,19 @@ def _resolve_run_id(explicit: str | None, payload: dict) -> str | None:
 
 
 def _extract_date_metier(payload: dict) -> datetime:
-    """Extrait la date métier avec une tolérance maximale pour les backfills et les triggers inter-DAGs."""
+    # 1. PRIORITÉ ABSOLUE : La date métier explicite transmise
+    if payload.get("explicit_business_date"):
+        try:
+            return datetime.fromisoformat(str(payload["explicit_business_date"]).replace("Z", "+00:00"))
+        except Exception:
+            pass
+    # 2. SINON, on tente de lire le contexte Airflow
     try:
         from airflow.sdk import get_current_context
         ctx = get_current_context()
         if ctx:
             dag_run = ctx.get("dag_run")
             
-            # Vérification dans la conf du Trigger (Cas du DAG 02 déclenché par le DAG 01)
             if dag_run and dag_run.conf:
                 if dag_run.conf.get("start_date"):
                     try:
@@ -70,7 +75,6 @@ def _extract_date_metier(payload: dict) -> datetime:
                     except Exception:
                         pass
 
-            # Vérification des paramètres du Run (Cas du Trigger manuel avec formulaire)
             if ctx.get("params") and hasattr(ctx["params"], "get"):
                 p_start = ctx["params"].get("start_date")
                 if p_start:
@@ -79,7 +83,6 @@ def _extract_date_metier(payload: dict) -> datetime:
                     except Exception:
                         pass
 
-            # Cas du Backfill natif CLI : Utilisation de la date logique du créneau
             if ctx.get("logical_date"):
                 return ctx["logical_date"]
             if ctx.get("data_interval_start"):
@@ -87,47 +90,63 @@ def _extract_date_metier(payload: dict) -> datetime:
     except Exception as err:
         LOGGER.debug("Erreur lors de l'extraction de la date métier: %s", err)
 
-    if "event_at" in payload:
-        try:
-            return datetime.strptime(str(payload["event_at"]), "%Y-%m-%d")
-        except Exception:
-            pass
-
     return datetime.now(timezone.utc)
 
 
 def _persist_pipeline_run(payload: dict, run_id: str, date_metier: datetime) -> None:
-    """Met à jour ou insère l'état d'avancement du pipeline global."""
+    """Met à jour ou insère l'état d'avancement du pipeline de production de manière dynamique."""
     from airflow.providers.postgres.hooks.postgres import PostgresHook
+    from psycopg2.extras import Json
     
     dag_id = payload.get("dag_id", "unknown_dag")
+    task_id = payload.get("task_id", "unknown_task")
     event_type = payload.get("event_type", "")
+    level = payload.get("level", "INFO")
+    message = payload.get("message", "")
     
-    vols_ingested = int(payload.get("vols_ingested") or 0)
-    transformation_rows = int(payload.get("rows_inserted") or payload.get("transformation_rows") or 0)
+    # CORRECTION : Extraction sécurisée des metrics (Fallback sur 0 avant le int())
+    val_ingest = payload.get("vols_ingested") or payload.get("rows_inserted") or 0
+    vols_ingested = int(val_ingest) if "ingest" in str(dag_id) or "ingest" in str(task_id) else 0
     
+    val_trans = payload.get("rows_inserted") or payload.get("transformation_rows") or payload.get("records_processed") or payload.get("row_count") or 0
+    transformation_rows = int(val_trans) if "transform" in str(dag_id) or "transform" in str(task_id) or "dbt" in str(task_id) else 0
+    
+    # Si le payload provient d'une fonction générique sans variables explicites
     if vols_ingested == 0 and transformation_rows == 0:
         records = payload.get("records_processed") or payload.get("row_count") or 0
-        if "dbt" in str(payload.get("task_id")) or payload.get("pipeline_engine") == "dbt" or "dbt" in str(event_type):
+        if "dbt" in str(task_id) or "transform" in str(task_id) or "dbt" in str(event_type):
             transformation_rows = int(records)
         else:
-            vols_ingested = int(records) if records else 0
+            vols_ingested = int(records) if "ingest" in str(task_id) or "ingest" in str(dag_id) else 0
 
+    # détection des statuts d'erreur et de succès
     status = "RUNNING"
-    if "failure" in str(event_type) or payload.get("level") == "ERROR":
+    if "failure" in str(event_type).lower() or "fail" in str(event_type).lower() or level == "ERROR":
         status = "FAILED"
-    elif "success" in str(event_type) or "reload" in str(event_type):
+    elif "success" in str(event_type).lower() or "reload" in str(event_type).lower():
         status = "SUCCESS"
 
+    # Captation du message d'erreur si présent pour le propager sur Grafana
+    error_message = payload.get("exception") or message if status == "FAILED" else None
+    
+    # Extraction de l'ensemble des clés secondaires pour la colonne execution_context
+    execution_context = {k: v for k, v in payload.items() if k not in _CORE_KEYS}
+
+    # calcul exact de la durée et persistance de l'erreur
     sql = f"""
-        INSERT INTO {RUN_TABLE} (run_id, dag_id, date_metier, started_at, status, vols_ingested, transformation_rows)
-        VALUES (%s, %s, %s, NOW(), %s, %s, %s)
+        INSERT INTO {RUN_TABLE} (
+            run_id, dag_id, date_metier, started_at, status, 
+            vols_ingested, transformation_rows, error_message, execution_context
+        )
+        VALUES (%s, %s, %s, NOW(), %s, %s, %s, %s, %s)
         ON CONFLICT (run_id) DO UPDATE SET
             status = EXCLUDED.status,
             finished_at = CASE WHEN EXCLUDED.status IN ('SUCCESS', 'FAILED') THEN NOW() ELSE {RUN_TABLE}.finished_at END,
             duration_sec = CASE WHEN EXCLUDED.status IN ('SUCCESS', 'FAILED') THEN EXTRACT(EPOCH FROM (NOW() - {RUN_TABLE}.started_at))::INTEGER ELSE {RUN_TABLE}.duration_sec END,
             vols_ingested = CASE WHEN EXCLUDED.vols_ingested > 0 THEN EXCLUDED.vols_ingested ELSE {RUN_TABLE}.vols_ingested END,
-            transformation_rows = CASE WHEN EXCLUDED.transformation_rows > 0 THEN EXCLUDED.transformation_rows ELSE {RUN_TABLE}.transformation_rows END;
+            transformation_rows = CASE WHEN EXCLUDED.transformation_rows > 0 THEN EXCLUDED.transformation_rows ELSE {RUN_TABLE}.transformation_rows END,
+            error_message = COALESCE(EXCLUDED.error_message, {RUN_TABLE}.error_message),
+            execution_context = COALESCE(EXCLUDED.execution_context, {RUN_TABLE}.execution_context);
     """
     
     try:
@@ -135,7 +154,11 @@ def _persist_pipeline_run(payload: dict, run_id: str, date_metier: datetime) -> 
         hook = PostgresHook(postgres_conn_id=conn_id)
         with hook.get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, (run_id, dag_id, date_metier.date(), status, vols_ingested, transformation_rows))
+                cur.execute(sql, (
+                    run_id, dag_id, date_metier.date(), status, 
+                    vols_ingested, transformation_rows, error_message, 
+                    Json(execution_context) if execution_context else None
+                ))
             conn.commit()
     except Exception as run_err:
         LOGGER.warning("[MONITORING ACCÈS LOGS] Impossible d'écrire dans la table pipeline_run: %s", run_err)
@@ -206,10 +229,8 @@ def log_event(
     explicit_timestamp: datetime | None = None,
     **extra,
 ) -> None:
-    if explicit_timestamp:
-        event_at = explicit_timestamp
-    else:
-        event_at = datetime.now(timezone.utc)
+    # L'événement physique se produit toujours maintenant
+    event_at = datetime.now(timezone.utc)
 
     payload = {
         "app": "airflow",
@@ -219,9 +240,16 @@ def log_event(
         "task_id": task_id,
         "event_type": event_type,
         "message": message,
-        "timestamp": event_at.isoformat() if hasattr(event_at, "isoformat") else str(event_at),
+        "timestamp": event_at.isoformat(),
         **extra,
     }
+    
+    # On stocke la date métier explicitement pour que _persist_pipeline_run puisse la lire
+    if explicit_timestamp:
+        payload["explicit_business_date"] = explicit_timestamp.isoformat() if hasattr(explicit_timestamp, "isoformat") else str(explicit_timestamp)
+        # Optionnel : on l'ajoute dans extra pour la retrouver dans le JSON d'airflow_events
+        payload["business_date"] = payload["explicit_business_date"]
+
     if run_id:
         payload["run_id"] = run_id
 

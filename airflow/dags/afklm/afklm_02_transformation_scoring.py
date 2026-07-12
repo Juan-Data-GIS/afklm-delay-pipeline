@@ -16,27 +16,55 @@ default_args = {
 # --- TRACKING FUNCTIONS ---
 def start_trans_tracking():
     from airflow.sdk import get_current_context
+    from datetime import datetime
     ctx = get_current_context()
+    
+    # Récupération de la date métier transmise par le DAG 01 dans la conf
+    dag_run = ctx.get("dag_run")
+    business_date = None
+    if dag_run and dag_run.conf and dag_run.conf.get("start_date"):
+        try:
+            # On parse la date transmise ("YYYY-MM-DD")
+            business_date = datetime.strptime(dag_run.conf["start_date"].strip()[:10], "%Y-%m-%d")
+        except Exception:
+            business_date = ctx.get("logical_date")
+    else:
+        business_date = ctx.get("logical_date")
+
     log_event(
         level="INFO", layer="ORCHESTRATION", message="Demarrage du pipeline de transformation et scoring dbt",
         dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
-        event_type="dag_started", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date")
+        event_type="dag_started", run_id=str(ctx["dag_run"].run_id), 
+        explicit_timestamp=business_date  # <--- Utilise la date métier harmonisée
     )
 
 def success_trans_tracking():
     from airflow.sdk import get_current_context
+    from datetime import datetime
     ctx = get_current_context()
     
     # Récupération de la volumétrie dbt via XCom
     dbt_metrics = ctx["task_instance"].xcom_pull(task_ids="afklm_t_dbt_run") or {}
     records = dbt_metrics.get("records_processed", 0)
     
+    # Même logique de récupération de la date métier pour le log de succès
+    dag_run = ctx.get("dag_run")
+    business_date = None
+    if dag_run and dag_run.conf and dag_run.conf.get("start_date"):
+        try:
+            business_date = datetime.strptime(dag_run.conf["start_date"].strip()[:10], "%Y-%m-%d")
+        except Exception:
+            business_date = ctx.get("logical_date")
+    else:
+        business_date = ctx.get("logical_date")
+        
     log_event(
         level="INFO", layer="TRUSTED", message=f"Pipeline Transformation REUSSI : {records} lignes traitees.",
         dag_id=ctx["task_instance"].dag_id, task_id=ctx["task_instance"].task_id,
-        event_type="dbt_run_success", run_id=str(ctx["dag_run"].run_id), explicit_timestamp=ctx.get("logical_date"),
-        vols_ingested=0,          # <--- Étape 2 : Pas d'ingestion directe, donc 0 vols_ingested
-        rows_inserted=records,     # <--- dbt écrit ici les lignes impactées
+        event_type="dbt_run_success", run_id=str(ctx["dag_run"].run_id), 
+        explicit_timestamp=business_date,  # <--- Utilise la date métier harmonisée
+        vols_ingested=0,          
+        rows_inserted=records,     
         pipeline_engine="dbt"
     )
 

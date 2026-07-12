@@ -115,7 +115,7 @@ with DAG(
     'openmeteo_01_ingestion_weather',
     default_args=default_args,
     description='Pipeline classique Airflow pour l ingestion meteo vers le schema bronze',
-    schedule='0 3 * * *',
+    schedule=None,##'0 3 * * *',
     catchup=True,
     is_paused_upon_creation=True,          
     max_active_runs=1  

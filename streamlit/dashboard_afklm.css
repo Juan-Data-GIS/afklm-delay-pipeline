@@ -1,8 +1,7 @@
-/* ==============================================================================
-   COMPOSANTS NATIFS STREAMLIT
-   ============================================================================== */
+/* COMPOSANTS NATIFS STREAMLIT*/
 
-/* Force la sidebar fermée à rester visible sous forme de fine bande bleue */
+
+/* Force la sidebar fermée à rester visible */
 [data-testid="stSidebarCollapsedControl"] {
     left: 0;
     background-color: #002244;
@@ -10,21 +9,18 @@
     border-radius: 0 8px 8px 0;
 }
 
-/* Personnalisation esthétique de la barre latérale principale */
+/* Cosmétique barre latérale principale */
 [data-testid="stSidebar"] {
     background-color: #f8f9fa;
     border-right: 1px solid #e0e0e0;
     transition: all 0.3s ease;
 }
 
-/* Harmonisation des boutons de l'écosystème technique */
 .stButton>button {
     border-radius: 4px;
 }
 
-/* ==============================================================================
-   CLASSES CUSTOM - PAGE DE GARDE & SOUTENANCE
-   ============================================================================== */
+/* PAGE DE GARDE & SOUTENANCE */
 
 /* Alignement et design du bloc de titre principal */
 .main-header {
@@ -45,7 +41,7 @@
     font-weight: 400;
 }
 
-/* Design des cartes individuelles des candidats */
+/* Design des cartes individuelles de l'équipe technique */
 .learner-card {
     background-color: #fcfcfc;
     padding: 20px;
@@ -65,9 +61,7 @@
     margin: 0;
 }
 
-/* ==============================================================================
-   FOOTER - SIDEBAR STATUS
-   ============================================================================== */
+/* FOOTER - SIDEBAR STATUS
 
 .api-status-container {
     font-size: 0.8em;

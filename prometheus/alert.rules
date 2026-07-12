@@ -1,0 +1,88 @@
+groups:
+  - name: afklm_control_tower_alerts
+    rules:
+
+      # =========================================================================
+      # 1. ALERTES DISPONIBILITÉ (CRITIQUE)
+      # =========================================================================
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: support-sre
+        annotations:
+          summary: "Composant de la Tour de Contrôle AFKLM hors-ligne"
+          description: "L'instance {{ $labels.instance }} du job {{ $labels.job }} ne répond plus depuis plus d'une minute."
+
+      # =========================================================================
+      # 2. ALERTES APPLICATIVES (AGRÉGÉES AVEC MAX POUR EVITER LES DOUBLONS WORK)
+      # =========================================================================
+      
+      # --- POSTGRES ANALYTICS ---
+      - alert: PostgresRAMUsageWarning
+        expr: max(process_resident_memory_bytes{job="postgres-analytics"}) >= 67108864
+        for: 2m
+        labels:
+          severity: warning
+          team: data-team
+        annotations:
+          summary: "Usage RAM Postgres Analytics élevé (Seuil Orange)"
+          description: "La base Postgres consomme {{ $value | humanize1024 }} de RAM (Tolérance de 2m dépassée)."
+
+      - alert: PostgresRAMUsageCritical
+        expr: max(process_resident_memory_bytes{job="postgres-analytics"}) >= 134217728
+        for: 30s
+        labels:
+          severity: critical
+          team: support-sre
+        annotations:
+          summary: "Usage RAM Postgres Analytics CRITIQUE (Seuil Rouge)"
+          description: "Risque de crash sur les transformations dbt ! RAM actuelle : {{ $value | humanize1024 }}."
+
+      # --- FASTAPI APPLICATION ---
+      - alert: FastAPIRAMUsageWarning
+        expr: max(process_resident_memory_bytes{job="fastapi-service"}) >= 268435456
+        for: 2m
+        labels:
+          severity: warning
+          team: data-team
+        annotations:
+          summary: "Usage RAM FastAPI élevé (Seuil Orange)"
+          description: "L'application FastAPI consomme {{ $value | humanize1024 }} de RAM."
+
+      - alert: FastAPIRAMUsageCritical
+        expr: max(process_resident_memory_bytes{job="fastapi-service"}) >= 402653184
+        for: 30s
+        labels:
+          severity: critical
+          team: support-sre
+        annotations:
+          summary: "Usage RAM FastAPI CRITIQUE (Seuil Rouge)"
+          description: "Risque d'OOM imminent sur l'API AFKLM. RAM actuelle : {{ $value | humanize1024 }}."
+
+      # =========================================================================
+      # 3. ALERTES INFRASTRUCTURE SERVEUR (SUPPORT MACHINE)
+      # =========================================================================
+      
+      # --- CPU INFRA ---
+      - alert: ServerCPUUsageCritical
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) >= 90
+        for: 5m
+        labels:
+          severity: critical
+          team: support-sre
+        annotations:
+          summary: "Saturation CPU sur le serveur hôte AFKLM"
+          description: "La charge CPU globale est bloquée à {{ $value | printf \"%.2f\" }}% depuis plus de 5 minutes."
+
+      # --- DISQUE PROCHE SATURATION ---
+      - alert: ServerDiskSpaceLow
+        expr: (sum(node_filesystem_free_bytes) / sum(node_filesystem_size_bytes)) * 100 <= 10
+        for: 10m
+        labels:
+          severity: warning
+          team: support-sre
+        annotations:
+          summary: "Espace disque inférieur à 10% sur le serveur"
+          description: "Le stockage racine est presque saturé. Il ne reste que {{ $value | printf \"%.2f\" }}% d'espace libre."

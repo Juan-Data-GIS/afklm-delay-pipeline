@@ -4,13 +4,13 @@ requests==2.32.5
 python-dotenv==1.2.2
 
 # dbt (transformation)
-dbt-postgres==1.10.0
+dbt-postgres==1.8.2
 psycopg2-binary==2.9.11
 
-# ML (scoring)
-sqlalchemy>=2.0.0,<3.0.0
-pandas==3.0.1
-scikit-learn==1.8.0
-xgboost==3.2.0
-joblib==1.5.3
-imbalanced-learn==0.14.1
+# ML (scoring harmonisé)
+sqlalchemy==2.0.27
+pandas==1.5.3
+scikit-learn==1.4.1.post1
+xgboost==2.0.3
+joblib==1.3.2
+imbalanced-learn==0.12.0
