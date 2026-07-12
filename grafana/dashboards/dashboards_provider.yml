@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'AFKLM Dashboards'
+    orgId: 1
+    folder: 'AFKLM Production'
+    type: file
+    disableDeletion: false
+    editable: true # Permet de faire des modifs dans l'UI sans que ce soit bloqué
+    options:
+      path: /var/lib/grafana/dashboards # <-- Le dossier utilisateur sécurisé

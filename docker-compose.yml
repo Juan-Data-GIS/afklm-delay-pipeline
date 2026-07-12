@@ -1,0 +1,240 @@
+name: afklm-formation
+
+x-airflow-common:
+  &airflow-common
+  build: .
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    
+    AIRFLOW__CORE__FERNET_KEY: '46BKJoQYlPPOexq0OhDZnIlB7JAIEfG1I8g2-X3I0OQ='
+    AIRFLOW__CORE__INTERNAL_API_SECRET_KEY: 'une_cle_secrete_tres_longue_et_partagee_pour_airflow_3'
+    AIRFLOW__API_AUTH__JWT_SECRET: 'une_cle_secrete_tres_longue_et_partagee_pour_airflow_3'
+
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 120
+    AIRFLOW__CORE__DAG_FILE_PROCESSOR_TIMEOUT: 120
+    AIRFLOW__WEBSERVER__COOKIE_NAME: "airflow_formation_session"
+
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__API__HOST: 0.0.0.0
+    AIRFLOW__API__PORT: 8080
+    AIRFLOW__WEBSERVER__BASE_URL: http://localhost:${AIRFLOW_WEB_PORT:-8081}
+    AIRFLOW__API__BASE_URL: http://localhost:${AIRFLOW_WEB_PORT:-8081}
+
+    # =========================================================================
+    # SÉCURISATION & ISOLATION POUR LA COHABITATION DES MULTIPLES AIRFLOW
+    # =========================================================================
+    AIRFLOW__CORE__PLUGINS_FOLDER: "/opt/airflow/plugins"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "afklm_soutenance_master_data_engineer_2026_key"
+    
+    # FIX CHROMIUM : Force l'utilisation des Run IDs dans l'interface web (Évite l'erreur Invalid time value)
+    AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_HAVING_RUN_ID_AS_URL_FORMAT: "True"
+
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/plugins:/opt/airflow/plugins
+    - airflow_logs:/opt/airflow/logs
+    - ./dbt_project.yml:/opt/airflow/dbt/dbt_project.yml
+    - ./profiles.yml:/opt/airflow/dbt/profiles.yml
+    - ./models:/opt/airflow/dbt/models
+    - ./macros:/opt/airflow/dbt/macros
+    - ./seeds:/opt/airflow/dbt/seeds
+    - ./snapshots:/opt/airflow/dbt/snapshots
+    - ./tests:/opt/airflow/dbt/tests
+    - ./analyses:/opt/airflow/dbt/analyses
+    - ./docs:/opt/airflow/docs
+    - ./ingestion:/opt/airflow/ingestion
+    - ./.dlt:/opt/airflow/.dlt
+    - ./ml:/opt/airflow/ml
+
+  networks:
+    - afklm-formation-net
+
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: afklm-formation-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "${AIRFLOW_POSTGRES_PORT:-5450}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    networks:
+      - afklm-formation-net
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: afklm-formation-init
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow fab users create \
+        --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
+      "
+
+  airflow-apiserver:
+    <<: *airflow-common
+    container_name: afklm-formation-apiserver
+    command: api-server
+    ports:
+      - "${AIRFLOW_WEB_PORT:-8081}:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: afklm-formation-scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    container_name: afklm-formation-dag-processor
+    command: dag-processor
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # --- LA PARTIE APPLICATIVE ---
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: afklm-formation-fastapi
+    working_dir: /app                  
+    ports:
+      - "${FASTAPI_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app 
+      - ./airflow/plugins:/app/utils
+    networks:
+      - afklm-formation-net
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: afklm-formation-streamlit
+    working_dir: /app                
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - ./streamlit:/app
+      - ./airflow/plugins:/app/utils
+    networks:
+      - afklm-formation-net
+    depends_on:
+      - fastapi
+    command: streamlit run dashboard_afklm.py --server.port=8501 --server.address=0.0.0.0
+
+  # --- LA PARTIE OBSERVABILITÉ AVEC INJECTION AUTOMATIQUE ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: afklm-formation-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - afklm-formation-net
+    restart: unless-stopped
+    depends_on:
+      - cadvisor
+      - postgres_exporter
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: afklm-formation-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      # Sauvegarde des données (utilisateurs, sessions, etc...).
+      - grafana_storage:/var/lib/grafana
+      
+      # Import du répertoire contenant les dashboard et les sources.
+      - ./grafana:/etc/grafana/provisioning
+      
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - afklm-formation-net
+    restart: unless-stopped
+
+  postgres_local:
+    image: postgres:15-alpine
+    container_name: afklm-formation-postgres-local
+    shm_size: '512mb'
+    environment:
+      POSTGRES_USER: data_engineer
+      POSTGRES_PASSWORD: FormationData2026
+      POSTGRES_DB: data_hub
+    ports:
+      - "${LOCAL_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+      - ./postgres_init/init_dataops_logs.sql:/docker-entrypoint-initdb.d/init_dataops_logs.sql
+    networks:
+      - afklm-formation-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: afklm-formation-cadvisor
+    privileged: true
+    ports:
+      - "${CADVISOR_PORT:-8082}:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro # Accès direct au démon Docker pour lister les noms de conteneurs
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro # <-- CRUCIAL : Mapping explicite des cgroups v2
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - afklm-formation-net
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: afklm-formation-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://data_engineer:FormationData2026@postgres_local:5432/data_hub?sslmode=disable"
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    networks:
+      - afklm-formation-net
+    depends_on:
+      - postgres_local
+
+networks:
+  afklm-formation-net:
+    name: afklm-formation-isolated-net        
+    driver: bridge                   
+
+volumes:
+  db_data:
+    external: true
+    name: projet-dst-production_db_data
+  airflow_logs:
+  grafana_storage:
+  postgres_local_data:
+    external: true
+    name: projet-dst-production_postgres_local_data

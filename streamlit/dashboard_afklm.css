@@ -1,0 +1,80 @@
+/* ==============================================================================
+   COMPOSANTS NATIFS STREAMLIT
+   ============================================================================== */
+
+/* Force la sidebar fermée à rester visible sous forme de fine bande bleue */
+[data-testid="stSidebarCollapsedControl"] {
+    left: 0;
+    background-color: #002244;
+    padding: 10px;
+    border-radius: 0 8px 8px 0;
+}
+
+/* Personnalisation esthétique de la barre latérale principale */
+[data-testid="stSidebar"] {
+    background-color: #f8f9fa;
+    border-right: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+/* Harmonisation des boutons de l'écosystème technique */
+.stButton>button {
+    border-radius: 4px;
+}
+
+/* ==============================================================================
+   CLASSES CUSTOM - PAGE DE GARDE & SOUTENANCE
+   ============================================================================== */
+
+/* Alignement et design du bloc de titre principal */
+.main-header {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.header-title {
+    color: #002244;
+    font-size: 2.8em;
+    font-family: sans-serif;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    color: #4A607A;
+    font-size: 1.5em;
+    font-weight: 400;
+}
+
+/* Design des cartes individuelles des candidats */
+.learner-card {
+    background-color: #fcfcfc;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    border-top: 3px solid #002244;
+}
+
+.learner-card h5 {
+    margin: 0 0 5px 0;
+    color: #002244;
+}
+
+.learner-card p {
+    color: #666;
+    font-size: 0.85em;
+    margin: 0;
+}
+
+/* ==============================================================================
+   FOOTER - SIDEBAR STATUS
+   ============================================================================== */
+
+.api-status-container {
+    font-size: 0.8em;
+    color: #777;
+    margin-top: 20px;
+}
+
+.status-connected {
+    color: #2e7d32;
+}

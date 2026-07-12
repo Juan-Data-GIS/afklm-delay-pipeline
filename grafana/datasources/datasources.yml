@@ -1,0 +1,22 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://afklm-formation-prometheus:9090
+    isDefault: false
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: afklm-formation-postgres-local:5432
+    database: data_hub
+    user: data_engineer
+    isDefault: true
+    secureJsonData:
+      password: "FormationData2026"
+    jsonData:
+      sslmode: "disable" # Local Docker : pas de SSL
+      postgresVersion: 1500
+      timescaledb: false
