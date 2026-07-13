@@ -5,7 +5,15 @@
 -- Les colonnes airport/airline/date sont renommées en *_key pour indiquer leur rôle de clé étrangère
 -- vers les dimensions (dim_airlines, dim_airports, dim_date).
 -- Grain : 1 ligne par leg (tronçon physique d'un vol).
-{{ config(schema='mart', materialized='table') }}
+
+{{ config(
+    schema='mart', 
+    materialized='incremental',
+    unique_key='leg_id',
+    pre_hook="SET statement_timeout = '600000';"
+) }}
+-- a laisser lors d'un full refresh / sécurité "anti-crash".
+
 select
     leg_id,
     flight_id,
@@ -42,3 +50,9 @@ select
     airline_delayed_share,
     is_delayed
 from {{ ref('flight_data__int_legs_ready') }}
+
+{% if is_incremental() %}
+  -- Mode incrémental : On ne traite que les vols récents pour éviter le Full Table Scan.
+  -- On remonte 3 jours en arrière par sécurité pour capter les mises à jour de statuts de vols (actual_arrival etc.)
+  where scheduled_departure >= (select max(scheduled_departure) - interval '3 day' from {{ this }})
+{% endif %}

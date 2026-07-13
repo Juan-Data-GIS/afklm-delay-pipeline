@@ -1,0 +1,472 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 0 },
+      "id": 8,
+      "title": "[Docker] Usage RAM - Base Postgres Analytics",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "max(process_resident_memory_bytes{job=\"postgres-analytics\"})",
+          "legendFormat": "RAM Postgres Local",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 268435456,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 67108864 },
+              { "color": "red", "value": 134217728 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true, "textMode": "auto" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 5, "x": 5, "y": 0 },
+      "id": 15,
+      "title": "[Docker] Usage RAM - FastAPI Application",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "max(process_resident_memory_bytes{job=\"fastapi-service\"})",
+          "legendFormat": "RAM FastAPI",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 536870912,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 268435456 },
+              { "color": "red", "value": 402653184 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true, "textMode": "auto" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 5, "x": 10, "y": 0 },
+      "id": 20,
+      "title": "[Local] Serveur : RAM Globale Consommée",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "RAM Consommée (Hôte)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 17179869184,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 12884901888 },
+              { "color": "red", "value": 15032385536 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true, "textMode": "auto" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 5, "x": 15, "y": 0 },
+      "id": 21,
+      "title": "[Local] Serveur : RAM Libre",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "RAM Disponible",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 17179869184,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 2147483648 },
+              { "color": "green", "value": 4294967296 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true, "textMode": "auto" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 2, "x": 20, "y": 0 },
+      "id": 30,
+      "title": "[Local] Hôte : Uptime",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "node_time_seconds - node_boot_time_seconds",
+          "legendFormat": "Temps d'activité",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "fixed", "fixedColor": "light-blue" }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 2, "x": 22, "y": 0 },
+      "id": 31,
+      "title": "[Local] Hôte : Processus Actifs",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "node_procs_running",
+          "legendFormat": "Processus Actifs",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 500 }
+            ]
+          }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 5 },
+      "id": 22,
+      "title": "[Local] Serveur : Charge CPU Globale (%)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "Charge CPU Globale %",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 5 },
+      "id": 23,
+      "title": "[Local] Serveur : Activité Multi-Cœurs (Détail)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum by (cpu) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) * 100",
+          "legendFormat": "Cœur {{cpu}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "right", "showLegend": true }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 12, "x": 0, "y": 11 },
+      "id": 6,
+      "title": "[Docker] Application : Bruit de Fond API (Requêtes / sec)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_requests_total[1m])) by (status, handler) or on() vector(0)",
+          "legendFormat": "{{handler}} - Status {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 11 },
+      "id": 16,
+      "title": "[Docker] Application : Volume Erreurs (HTTP 5xx) & Erreurs DB",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_requests_total{status=~\"5..\"}[5m])) or on() vector(0)",
+          "legendFormat": "Erreurs HTTP 5xx",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 16 },
+      "id": 24,
+      "title": "[Local] Serveur : Évolution Espace Disque Disponible (Go)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(node_filesystem_free_bytes) / 1024 / 1024 / 1024",
+          "legendFormat": "Espace Libre Total (Go)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 16 },
+      "id": 25,
+      "title": "[Local] Support : Activité Réseau Hôte (Entrant / Sortant)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(node_network_receive_bytes_total[5m]))",
+          "legendFormat": "Trafic Entrant (Rx)",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(node_network_transmit_bytes_total[5m]))",
+          "legendFormat": "Trafic Sortant (Tx)",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "right", "showLegend": true }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 22 },
+      "id": 40,
+      "title": "[Docker] Tour de Contrôle : État de Disponibilité des Moteurs et Services (AFKLM)",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "up",
+          "legendFormat": "__auto",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "job": "Composant Réseau Docker",
+              "Value": "Statut"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "showTypeIcons": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": { "text": "✔ SERVICE EN LIGNE (OK)", "color": "green" },
+                "0": { "text": "✖ INDISPONIBLE (ALERTE)", "color": "red" }
+              }
+            },
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "postgres-analytics",
+                "result": { "text": "PostgreSQL Analytics" }
+              }
+            },
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "fastapi-service",
+                "result": { "text": "FastAPI Application" }
+              }
+            },
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "prometheus",
+                "result": { "text": "Prometheus Engine" }
+              }
+            },
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "node-exporter",
+                "result": { "text": "Node Exporter (Hôte)" }
+              }
+            },
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "docker-containers-cadvisor",
+                "result": { "text": "cAdvisor Engine" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Statut"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["production", "dataops", "infrastructure", "prometheus", "support"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": { "hideTimepicker": false },
+  "timezone": "browser",
+  "title": "AFKLM - Control Tower Telemetry and SRE",
+  "version": 15
+}

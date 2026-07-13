@@ -68,6 +68,61 @@ Le projet s'appuie sur deux dépôts Git distincts :
 
 ---
 
+## Infrastructure Docker & Orchestration
+
+Le pipeline s'exécute sur une stack Docker Compose multi-services qui orchestre l'ingestion, la transformation, le serving et le monitoring. Voir [`docs/INSTALL.md`](docs/INSTALL.md) pour la procédure d'installation complète.
+
+### Airflow
+
+Orchestrateur des jobs de production (dlt + dbt + ML). Trois DAGs :
+
+- **`afklm_01_ingestion_data_quality`** — Ingestion API AF/KLM + contrôles qualité ([doc](docs/afklm_01_ingestion_data_quality.md))
+- **`afklm_02_transformation_scoring`** — Run dbt (raw → int → mart) puis scoring ML incrémental ([doc](docs/afklm_02_transformation_scoring.md))
+- **`openmeteo_01_ingestion_weather`** — Enrichissement météo Open-Meteo ([doc](docs/openmeteo_01_ingestion_weather.md))
+
+UI disponible sur `http://localhost:${AIRFLOW_WEB_PORT}` (défaut : 8081).
+
+### FastAPI
+
+API de serving ML (`api_app.py`, `Dockerfile.api`) qui expose les prédictions de retards générées par `ml/ml_run.py`. Le service charge les artefacts XGBoost / scaler / means depuis Supabase Storage (URLs signées configurées dans `.env`, voir `MODEL_*_URL`).
+
+Endpoint par défaut : `http://localhost:${FASTAPI_PORT}` (défaut : 8000).
+
+### Streamlit
+
+Dashboard interactif (`streamlit/dashboard_afklm.py` + `streamlit/pages/`) pour explorer les retards observés et prédits, avec deux pages :
+
+- **Observabilité** — santé et métriques du pipeline (`streamlit/pages/1_Observabilite.py`)
+- **Prédictions** — visualisation des sorties ML (`streamlit/pages/2_Predictions.py`)
+
+UI disponible sur `http://localhost:${STREAMLIT_PORT}` (défaut : 8501).
+
+### Monitoring — Prometheus & Grafana
+
+Stack d'observabilité complète :
+
+- **Prometheus** (`prometheus/prometheus.yml`) — scrape des métriques (FastAPI, Postgres exporter, cAdvisor, node-exporter)
+- **Alertmanager** (`prometheus/alertmanager.yml` + `prometheus/alert.rules`) — règles d'alerting
+- **Grafana** (`grafana/`) — dashboards préconfigurés avec datasource Prometheus
+
+UI Grafana : `http://localhost:${GRAFANA_PORT}` (défaut : 3000).
+
+### Ports exposés
+
+| Service | Variable `.env` | Port par défaut |
+|---|---|---|
+| Airflow Web | `AIRFLOW_WEB_PORT` | 8081 |
+| Streamlit | `STREAMLIT_PORT` | 8501 |
+| FastAPI | `FASTAPI_PORT` | 8000 |
+| Grafana | `GRAFANA_PORT` | 3000 |
+| Prometheus | `PROMETHEUS_PORT` | 9090 |
+| cAdvisor | `CADVISOR_PORT` | 8082 |
+| Postgres Exporter | `POSTGRES_EXPORTER_PORT` | 9187 |
+
+Voir `.env.example` pour la liste complète des variables et `docker-compose.yml` pour l'assemblage des services.
+
+---
+
 ## Outils utilisés
 
 ### dlt — Data Load Tool

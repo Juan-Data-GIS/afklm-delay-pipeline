@@ -16,9 +16,20 @@ dbt_packages/
 
 # Python
 venv/
+.venv/
 __pycache__/
 *.py[cod]
 .DS_Store
 
 # Notes d'avancement (locales)
 avancement_*.md
+
+
+# Compléments DLT
+.dlt/.var
+_local
+*.duckdb
+*.wal
+
+# Snapshots et Backups locaux de la base de données
+supabase_backup.sql
