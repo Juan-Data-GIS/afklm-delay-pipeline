@@ -78,7 +78,6 @@ Orchestrateur des jobs de production (dlt + dbt + ML). Trois DAGs :
 
 - **`afklm_01_ingestion_data_quality`** — Ingestion API AF/KLM + contrôles qualité ([doc](docs/afklm_01_ingestion_data_quality.md))
 - **`afklm_02_transformation_scoring`** — Run dbt (raw → int → mart) puis scoring ML incrémental ([doc](docs/afklm_02_transformation_scoring.md))
-- **`openmeteo_01_ingestion_weather`** — Enrichissement météo Open-Meteo ([doc](docs/openmeteo_01_ingestion_weather.md))
 
 UI disponible sur `http://localhost:${AIRFLOW_WEB_PORT}` (défaut : 8081).
 
