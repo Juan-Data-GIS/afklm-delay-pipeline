@@ -24,6 +24,7 @@ x-airflow-common:
     AIRFLOW__API__PORT: 8080
     AIRFLOW__WEBSERVER__BASE_URL: http://localhost:${AIRFLOW_WEB_PORT:-8081}
     AIRFLOW__API__BASE_URL: http://localhost:${AIRFLOW_WEB_PORT:-8081}
+    DBT_LOG_PATH: /tmp/dbt_logs
 
     # =========================================================================
     # SÉCURISATION & ISOLATION POUR LA COHABITATION DES MULTIPLES AIRFLOW
@@ -268,10 +269,6 @@ networks:
 
 volumes:
   db_data:
-    external: true
-    name: projet-dst-production_db_data
   airflow_logs:
   grafana_storage:
   postgres_local_data:
-    external: true
-    name: projet-dst-production_postgres_local_data
