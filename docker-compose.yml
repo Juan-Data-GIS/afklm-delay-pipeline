@@ -164,7 +164,6 @@ services:
       - afklm-formation-net
     restart: unless-stopped
     depends_on:
-      - cadvisor
       - postgres_exporter
       - node-exporter
   alertmanager:
@@ -213,21 +212,6 @@ services:
     volumes:
       - postgres_local_data:/var/lib/postgresql/data
       - ./postgres_init/init_dataops_logs.sql:/docker-entrypoint-initdb.d/init_dataops_logs.sql
-    networks:
-      - afklm-formation-net
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: afklm-formation-cadvisor
-    privileged: true
-    ports:
-      - "${CADVISOR_PORT:-8082}:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro # Accès direct au démon Docker pour lister les noms de conteneurs
-      - /sys:/sys:ro
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro # <-- CRUCIAL : Mapping explicite des cgroups v2
-      - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - afklm-formation-net
 
