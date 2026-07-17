@@ -5,6 +5,7 @@ import traceback
 import requests
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+import pandas as pd 
 
 load_dotenv()
 
@@ -251,3 +252,51 @@ def get_confusion_matrix():
             return {row["prediction_type"]: row["total"] for row in res}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.get("/v1/analytics/days")
+def get_days():
+    """Renvoie les jours en BDD"""
+    try:
+        sql_day_query = f""" SELECT DISTINCT date_key as day from public_mart.fct_flight_legs  """
+        all_days = pd.read_sql(sql_day_query, engine)["day"].tolist()
+        return all_days
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/v1/analytics/day-query")
+def get_day_predictions(day):
+    """Renvoie les vols d'une journée avec leur prédiction."""
+
+    sql_day_query = f""" with delays_date as (SELECT d.leg_id, l.leg_id, l.date_key  FROM public.ml_delays d
+                INNER JOIN public_mart.fct_flight_legs l ON CAST(d.leg_id AS VARCHAR(36)) = CAST(l.leg_id AS VARCHAR(36)) )
+                select distinct(date_key) as day from delays_date  """
+    all_days = pd.read_sql(sql_day_query, engine)["day"].tolist()
+    if day not in all_days:
+        raise HTTPException(status_code=400, detail="Journée absente des données.")
+    
+    try:
+        sql_delays_query = f""" 
+        SELECT
+            d.flight_id,
+            MAX(d.delay_predicted) AS delay_predicted,
+            l.flight_number,
+            l.airline_name,
+            l.departure_airport_name,
+            l.arrival_airport_name,
+            l.date_key
+        FROM
+            public.ml_delays d
+        INNER JOIN
+            public_mart.fct_flight_legs l
+        ON
+            CAST(d.leg_id AS VARCHAR(36)) = CAST(l.leg_id AS VARCHAR(36))
+        WHERE
+            l.date_key = '{day}'
+        GROUP BY
+            d.flight_id, l.flight_number, l.airline_name, l.departure_airport_name,l.arrival_airport_name, l.date_key """
+        delays = pd.read_sql(sql_delays_query, engine)
+        return delays.to_json(orient='columns')
+    except Exception as e:
+        print(f"[SQL EXCEPTION] : {e}")
+        return {}
