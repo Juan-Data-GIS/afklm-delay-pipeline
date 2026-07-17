@@ -28,7 +28,3 @@ scrape_configs:
   - job_name: "fastapi-service"
     static_configs:
       - targets: ["fastapi:8000"]
-
-  - job_name: "docker-containers-cadvisor"
-    static_configs:
-      - targets: ["afklm-formation-cadvisor:8080"]

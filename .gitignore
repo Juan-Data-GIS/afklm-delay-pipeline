@@ -32,4 +32,4 @@ _local
 *.wal
 
 # Snapshots et Backups locaux de la base de données
-supabase_backup.sql
+backup/

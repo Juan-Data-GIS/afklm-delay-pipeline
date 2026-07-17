@@ -424,13 +424,6 @@
                 "pattern": "node-exporter",
                 "result": { "text": "Node Exporter (Hôte)" }
               }
-            },
-            {
-              "type": "regex",
-              "options": {
-                "pattern": "docker-containers-cadvisor",
-                "result": { "text": "cAdvisor Engine" }
-              }
             }
           ],
           "thresholds": {
