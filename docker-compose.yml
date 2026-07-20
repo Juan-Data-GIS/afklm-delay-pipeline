@@ -167,10 +167,13 @@ services:
       - postgres_exporter
       - node-exporter
   alertmanager:
-    image: prom/alertmanager:v0.22.2
+    image: prom/alertmanager:v0.27.0
     container_name: afklm-formation-alertmanager
     volumes:
       - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./.smtp_password:/etc/alertmanager/smtp_password
+    environment:
+      - ALERTMANAGER_SMTP_PASSWORD=${ALERTMANAGER_SMTP_PASSWORD}
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'

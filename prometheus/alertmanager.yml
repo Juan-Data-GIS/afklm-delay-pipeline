@@ -1,13 +1,13 @@
 global:
-  smtp_from: "prometheus.datascientest@gmail.com"
+  smtp_from: "jf.formation.dst@gmail.com"
   smtp_smarthost: "smtp.gmail.com:587"
-  smtp_auth_username: "prometheus.datascientest@gmail.com"
-  smtp_auth_password: "qsyhonvlraonufcg"
+  smtp_auth_username: "jf.formation.dst@gmail.com"
+  smtp_auth_password_file: "/etc/alertmanager/smtp_password"
   smtp_require_tls: true
 
 route:
   group_by: ["alertname"]
-  group_wait: 10s
+  group_wait: 5s         # Réduit à 5s pour accélérer l'envoi lors de la démo
   group_interval: 1m
   repeat_interval: 3h
   receiver: "default-receiver"
@@ -15,5 +15,5 @@ route:
 receivers:
   - name: "default-receiver"
     email_configs:
-      - to: "jflactif@gmail.com"
+      - to: "jf.formation.dst@gmail.com"
         send_resolved: true
