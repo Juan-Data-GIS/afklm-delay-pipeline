@@ -1,9 +1,10 @@
 import streamlit as st
 import requests
-import json
+import os
 
 # API Configuration
-API_BASE_URL = "http://fastapi:8000"
+API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
+
 st.set_page_config(page_title="Prédiction du retard par vol", layout="wide")
 
 # Load CSS
@@ -35,22 +36,17 @@ def fetch_flights_for_day(day):
     try:
         response = requests.get(f"{API_BASE_URL}/v1/analytics/day-query?day={day}", timeout=10)
         response.raise_for_status()
-        return response
+        return response.json()
     except requests.exceptions.RequestException as e:
         st.error(f"Erreur lors de la récupération des vols pour le jour {day}: {e}")
         return None
 
 # Process flight data
-def process_flights(response):
+def process_flights(response_json):
     try:
-        raw_data = response.json()
-        flight_data = json.loads(raw_data)
-        flight_data["combined_field"] = {
-            key: f"{flight_data['flight_number'][key]} - {flight_data['airline_name'][key]} - "
-                 f"{flight_data['departure_airport_name'][key]} --> {flight_data['arrival_airport_name'][key]}"
-            for key in flight_data["flight_id"].keys()
-        }
-        return flight_data
+        for flight in response_json:
+            flight["combined_field"] = f"{flight['flight_number']} - {flight['airline_name']} - "f"{flight['departure_airport_name']} --> {flight['arrival_airport_name']}"
+        return response_json
     except Exception as e:
         st.error(f"Erreur lors du traitement des données de vol: {e}")
         return None
@@ -102,12 +98,12 @@ with st.container(border=True):
     if st.session_state.day_chosen:
         with st.spinner("Recherche des vols du jour..."):
             # Fetch flights for the selected day (cached)
-            response = fetch_flights_for_day(option)
-            if response:
-                flight_data = process_flights(response)
+            response_json = fetch_flights_for_day(option)
+            if response_json:
+                flight_data = process_flights(response_json)
                 if flight_data:
                     st.session_state.flight_data = flight_data
-                    flight_options = list(flight_data["combined_field"].values())
+                    flight_options = [flight["combined_field"] for flight in flight_data]
                     selected_flight = st.selectbox(
                         "Choisissez votre vol:",
                         flight_options,
@@ -126,13 +122,13 @@ with st.container(border=True):
                     # Only show delay result after clicking "Sélectionner le vol"
                     if st.session_state.show_flights and st.session_state.flight_data:
                         flight_id = None
-                        for key, value in st.session_state.flight_data["combined_field"].items():
-                            if value == st.session_state.selected_flight:
-                                flight_id = st.session_state.flight_data["flight_id"][key]
+                        for flight in flight_data:
+                            if flight["combined_field"] == st.session_state.selected_flight:
+                                flight_id = flight["flight_id"]
+                                delay = flight["delay_predicted"]
                                 break
 
                         if flight_id:
-                            delay = st.session_state.flight_data["delay_predicted"][key]
                             if delay == 1:
                                 st.info(f""":red[Le vol {flight_id} devrait avoir du retard.]""", icon="⏳")
                             elif delay == 0:
