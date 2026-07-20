@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Query
 from sqlalchemy import create_engine, text
 from typing import Optional
 from prometheus_fastapi_instrumentator import Instrumentator
-from utils.monitoring_utils import log_event
+#from utils.monitoring_utils import log_event
 
 ENV_TARGET = os.getenv("ENV_TARGET", "local").strip().lower()
 print(f"[FASTAPI STARTUP] Environnement detecte : {ENV_TARGET.upper()}")
@@ -154,12 +154,12 @@ def get_pipeline_logs():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/v1/analytics/ml-metrics")
-def get_ml_metrics(dimension: str = Query(..., description="Choix de l'axe : airport, city, date, airline")):
+@app.get("/v1/analytics/delay-metrics")
+def get_delay_metrics(dimension: str = Query(..., description="Choix de l'axe : airport, city, date, airline")):
     """Calcule les métriques de retards et renvoie les statistiques globales pour les KPIs."""
     dimension_map = {
         "airport": "departure_airport_name",
-        "city": "departure_airport_name",  
+        "city": "departure_city_name",  
         "date": "date_key",
         "airline": "airline_name"
     }
@@ -171,29 +171,23 @@ def get_ml_metrics(dimension: str = Query(..., description="Choix de l'axe : air
     min_vols_threshold = 50 if dimension in ["airport", "city"] else 10
     
     sql_query = f"""
-        WITH unique_mart_flights AS (
+
+        WITH unique_mart_flights_delays AS (
             SELECT 
-                TRIM(LOWER(CAST(leg_id AS VARCHAR(36)))) AS clean_leg_id,
-                MAX({col_name}) AS label
+                leg_id,
+                MAX({col_name}) AS label,
+                MAX(CASE WHEN is_delayed = true THEN 1 ELSE 0 END) as is_delayed
             FROM public_mart.fct_flight_legs
-            WHERE {col_name} IS NOT NULL
-            GROUP BY TRIM(LOWER(CAST(leg_id AS VARCHAR(36))))
-        ),
-        unique_predictions AS (
-            SELECT 
-                TRIM(LOWER(CAST(leg_id AS VARCHAR(36)))) AS clean_leg_id,
-                MAX(delay_predicted) AS delay_predicted
-            FROM public.ml_delays
-            GROUP BY TRIM(LOWER(CAST(leg_id AS VARCHAR(36))))
+            WHERE {col_name} IS NOT NULL and is_delayed is not null
+            GROUP BY leg_id
         ),
         aggregated_data AS (
             SELECT 
-                f.label,
-                SUM(CASE WHEN p.delay_predicted = 1 THEN 1 ELSE 0 END) AS total_retards,
+                label,
+                SUM(is_delayed) AS total_retards,
                 COUNT(*) AS total_vols
-            FROM unique_mart_flights f
-            INNER JOIN unique_predictions p ON f.clean_leg_id = p.clean_leg_id
-            GROUP BY f.label
+            FROM unique_mart_flights_delays 
+            GROUP BY label
         )
         SELECT 
             label,
@@ -203,6 +197,7 @@ def get_ml_metrics(dimension: str = Query(..., description="Choix de l'axe : air
         FROM aggregated_data
         WHERE total_vols >= {min_vols_threshold}
         ORDER BY delayed_share DESC;
+
     """
     try:
         with engine.connect() as conn:

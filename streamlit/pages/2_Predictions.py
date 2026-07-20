@@ -2,11 +2,12 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+import os
 from utils.monitoring_utils import log_event
 
-API_BASE_URL = "http://fastapi:8000"
+API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
-st.set_page_config(page_title="Analyses Prédictives ML", layout="wide")
+st.set_page_config(page_title="Analyses des retards constatés", layout="wide")
 
 def load_global_css():
     try:
@@ -21,11 +22,11 @@ def load_global_css():
 
 load_global_css()
 
-st.markdown("### Analyse Predictive")
-st.caption("Simulation et requêtage des indicateurs de retards par axe analytique.")
+st.markdown("### Analyse des retards")
+st.caption("Agrégation des retards par segmentation.")
 
 with st.container(border=True):
-    st.markdown("**Paramétrage de la requête analytique**")
+    st.markdown("**Paramétrage de la requête**")
     
     col_select1, col_select2 = st.columns([2, 1])
     with col_select1:
@@ -57,9 +58,9 @@ if trigger_api:
         message=f"Requête analytique déclenchée par l'UI sur la dimension : {dimension_label} ({top_n})."
     )
     
-    with st.spinner("Calcul des agrégations MLOps..."):
+    with st.spinner("Calcul des agrégations..."):
         try:
-            url_ml = f"{API_BASE_URL}/v1/analytics/ml-metrics?dimension={dimension_query}"
+            url_ml = f"{API_BASE_URL}/v1/analytics/delay-metrics?dimension={dimension_query}"
             response = requests.get(url_ml, timeout=10)
             
             if response.status_code == 200:
@@ -83,16 +84,16 @@ if trigger_api:
                         st.markdown("#### Indicateurs de Performance Globaux (Axe filtré)")
                         kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
                         with kpi_col1:
-                            st.metric(label="Taux de Retard Moyen", value=f"{kpis.get('global_rate')}%")
+                            st.metric(label="Taux de retard moyen", value=f"{kpis.get('global_rate')}%")
                         with kpi_col2:
-                            st.metric(label="Volume de Vols Évalués", value=f"{kpis.get('total_vols'):,}".replace(",", " "))
+                            st.metric(label="Volume de vols enregistrés", value=f"{kpis.get('total_vols'):,}".replace(",", " "))
                         with kpi_col3:
-                            st.metric(label="Total Retards Prédits", value=f"{kpis.get('total_retards'):,}".replace(",", " "))
+                            st.metric(label="Total retards enregistrés", value=f"{kpis.get('total_retards'):,}".replace(",", " "))
                         st.divider()
                     
                     # Message d'analyse discriminante
                     top_1 = df_ml.iloc[0]
-                    st.info(f"Analyse discriminante : La catégorie **{top_1['label']}** présente le taux de retard théorique le plus élevé ({top_1['delayed_share']}%).")
+                    st.info(f"Analyse discriminante : La catégorie **{top_1['label']}** présente le taux de retard le plus élevé ({top_1['delayed_share']}%).")
                     
                     # Filtrage du volume d'affichage
                     if top_n == "Top 5":
