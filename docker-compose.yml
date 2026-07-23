@@ -43,6 +43,7 @@ x-airflow-common:
     - ./profiles.yml:/opt/airflow/dbt/profiles.yml
     - ./models:/opt/airflow/dbt/models
     - ./macros:/opt/airflow/dbt/macros
+    - ./target:/opt/airflow/dbt/target
     - ./seeds:/opt/airflow/dbt/seeds
     - ./snapshots:/opt/airflow/dbt/snapshots
     - ./tests:/opt/airflow/dbt/tests
