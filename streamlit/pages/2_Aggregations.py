@@ -3,7 +3,6 @@ import requests
 import pandas as pd
 import plotly.express as px
 import os
-from utils.monitoring_utils import log_event
 
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
@@ -52,11 +51,7 @@ with st.container(border=True):
 st.divider()
 
 if trigger_api:
-    log_event(
-        level="INFO", layer="UI", dag_id="dashboard_session",
-        task_id="jury_trigger_query", event_type="streamlit_click_query",
-        message=f"Requête analytique déclenchée par l'UI sur la dimension : {dimension_label} ({top_n})."
-    )
+
     
     with st.spinner("Calcul des agrégations..."):
         try:

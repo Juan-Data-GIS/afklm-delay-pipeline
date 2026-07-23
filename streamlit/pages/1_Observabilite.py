@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import pandas as pd
 import os
-from utils.monitoring_utils import log_event
 
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
