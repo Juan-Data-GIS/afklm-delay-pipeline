@@ -11,7 +11,11 @@ profiles.yml
 .user.yml
 .dbt/
 logs/
-target/
+# Garder le dossier target/ versionne via .gitkeep pour eviter les
+# mounts root-owned au premier docker compose up sur un fresh clone
+# (le mount ./target: a ete introduit dans PR #21).
+target/*
+!target/.gitkeep
 dbt_packages/
 
 # dlt
