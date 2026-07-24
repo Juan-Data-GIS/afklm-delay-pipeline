@@ -1,8 +1,32 @@
 # Copier en ./profiles.yml — chargé via DBT_PROFILES_DIR="." défini dans .mise.toml
+# 3 targets disponibles :
+#   - local : Postgres Docker interne (container postgres_local, DB data_hub)
+#   - dev   : Supabase Cloud (alias sur prod tant qu'un 2e projet n'est pas provisionné)
+#   - prod  : Supabase Cloud (recommandé pour la stack Docker Compose + FastAPI + ML)
 # Switcher d'environnement : source ./switch-env.sh dev | prod
+# Doit rester cohérent avec ENV_TARGET dans .env (api_app.py, ml_run.py, monitoring_utils.py)
 afklm_delay_pipeline:
-  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  target: "{{ env_var('DBT_TARGET', 'prod') }}"
   outputs:
+    # ---- LOCAL : Postgres Docker (sandbox de développement / évaluation) ----
+    # Utilisé quand ENV_TARGET=local et DBT_TARGET=local.
+    # Résolution DNS Docker : 'postgres_local' lorsque dbt tourne dans un conteneur.
+    # Hors Docker (host) : exporter DBT_LOCAL_HOST=localhost et LOCAL_POSTGRES_PORT.
+    local:
+      type: postgres
+      host: "{{ env_var('DBT_LOCAL_HOST', 'postgres_local') }}"
+      port: "{{ env_var('DBT_LOCAL_PORT', '5432') | int }}"
+      user: data_engineer
+      password: FormationData2026
+      dbname: data_hub
+      schema: public
+      threads: 4
+      sslmode: disable
+      connect_timeout: 30
+
+    # ---- DEV : Supabase Cloud ----
+    # TODO: séparer si un second projet Supabase est provisionné
+    # (aujourd'hui alias sur les mêmes variables AFKLM_DB_* que prod)
     dev:
       type: postgres
       host: "{{ env_var('AFKLM_DB_HOST') }}"
@@ -13,6 +37,8 @@ afklm_delay_pipeline:
       schema: public
       threads: 4
       sslmode: "{{ env_var('AFKLM_DB_SSLMODE', 'require') }}"
+
+    # ---- PROD : Supabase Cloud ----
     prod:
       type: postgres
       host: "{{ env_var('AFKLM_DB_HOST') }}"
