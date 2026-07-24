@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
-API_BASE_URL = "http://fastapi:8000"
+API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
 st.set_page_config(page_title="DataOps Monitoring", layout="wide")
 

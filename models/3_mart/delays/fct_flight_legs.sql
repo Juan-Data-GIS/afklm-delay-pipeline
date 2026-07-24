@@ -24,6 +24,7 @@ select
     arrival_airport_code as arrival_airport_key,
     departure_airport_name,
     arrival_airport_name,
+    departure_city_name,
     flight_schedule_date as date_key,
     scheduled_departure,
     actual_departure,
