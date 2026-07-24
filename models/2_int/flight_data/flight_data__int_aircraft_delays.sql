@@ -1,28 +1,57 @@
--- int.flight_data__int_aircraft_delays
--- Feature ML : Proportion de retards sur les sept derniers jours pour chaque appareil 
--- Calcule la proportion de vols en retard sur les sept jours précédant une date pour chaque modalité d'appareil
--- Est-ce que ce type d'appareil a tendance à provoquer du retard ? 
--- 1 ligne par (aircraftCode, flightScheduleDate).
-{{ config(schema='int', materialized='table') }}
+{{
+  config(
+    schema='int',
+    materialized='incremental',
+    unique_key=['aircraft_code', 'flight_schedule_date'],
+    partition_by={'field': 'flight_schedule_date', 'data_type': 'date'}
+  )
+}}
 
-with daily_aircraft_stats as (
-    select
-        l.aircraft_code,
-        cast(f.flight_schedule_date as date) as flight_date,
-        -- Un vol n'est en retard que si une ligne existe ET que delay_duration est différent de '00'
-        case when d.flight_leg_id is not null and d.delay_duration != '00' then 1 else 0 end as is_delayed
-    from {{ ref('flight_data__source_operational_flight_legs') }} l
-    join {{ ref('flight_data__source_operational_flights') }} f on l.flight_id = f.id
-    -- LEFT JOIN capital pour conserver les vols à l'heure !
-    left join {{ ref('flight_data__source_operational_flight_delays') }} d on l.id = d.flight_leg_id
-    where l.cancelled = false and l.aircraft_code is not null
+WITH base AS (
+  SELECT
+    l.aircraft_code,
+    cast(f.flight_schedule_date as DATE) as flight_schedule_date,
+    CASE WHEN d.delay_duration != '00' THEN 1 ELSE 0 END as is_delayed
+  FROM {{ ref('flight_data__source_operational_flight_legs') }} l
+  JOIN {{ ref('flight_data__source_operational_flights') }} f
+    ON l.flight_id = f.id
+  JOIN {{ ref('flight_data__source_operational_flight_delays') }} d
+    ON l.id = d.flight_leg_id
+  WHERE l.cancelled = false and l.aircraft_code is not null
+  {% if is_incremental() %}
+    AND cast(f.flight_schedule_date as DATE) >= (
+      SELECT COALESCE(
+        MAX(flight_schedule_date) - INTERVAL '7 days',
+        '1970-01-01'::DATE
+      ) FROM {{ this }}
+    )
+  {% endif %}
+),
+
+daily_counts AS (
+  SELECT
+    aircraft_code,
+    flight_schedule_date,
+    SUM(is_delayed) as delayed_count,
+    COUNT(*) as total_count
+  FROM base
+  GROUP BY aircraft_code, flight_schedule_date
 )
-select 
-    t1.aircraft_code,
-    t1.flight_date as flight_schedule_date,
-    round(sum(t2.is_delayed) * 100.0 / nullif(count(t2.is_delayed), 0), 2) as aircraft_delayed_share
-from daily_aircraft_stats t1
-join daily_aircraft_stats t2 
-    on t1.aircraft_code = t2.aircraft_code
-    and t2.flight_date between t1.flight_date - interval '7 days' and t1.flight_date
-group by t1.aircraft_code, t1.flight_date
+
+SELECT
+  aircraft_code,
+  flight_schedule_date,
+  SUM(delayed_count) OVER (
+    PARTITION BY aircraft_code
+    ORDER BY flight_schedule_date
+    RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+  ) * 100.0 /
+  NULLIF(
+    SUM(total_count) OVER (
+      PARTITION BY aircraft_code
+      ORDER BY flight_schedule_date
+      RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW
+    ),
+    0
+  ) as aircraft_delayed_share
+FROM daily_counts
