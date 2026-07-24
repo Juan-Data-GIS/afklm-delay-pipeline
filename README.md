@@ -89,10 +89,10 @@ Endpoint par défaut : `http://localhost:${FASTAPI_PORT}` (défaut : 8000).
 
 ### Streamlit
 
-Dashboard interactif (`streamlit/dashboard_afklm.py` + `streamlit/pages/`) pour explorer les retards observés et prédits, avec deux pages :
+Dashboard interactif (`streamlit/dashboard_afklm.py` + `streamlit/pages/`) pour explorer les retards constatés, avec deux pages :
 
 - **Observabilité** — santé et métriques du pipeline (`streamlit/pages/1_Observabilite.py`)
-- **Prédictions** — visualisation des sorties ML (`streamlit/pages/2_Predictions.py`)
+- **Analyses des retards constatés** — agrégations des retards par axe analytique : aéroport, ville, compagnie, date (`streamlit/pages/2_Aggregations.py`)
 
 UI disponible sur `http://localhost:${STREAMLIT_PORT}` (défaut : 8501).
 
