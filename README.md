@@ -258,6 +258,18 @@ pip install -r requirements.txt
 cp .dlt/secrets.toml.example .dlt/secrets.toml
 # → éditer .dlt/secrets.toml et renseigner la clé API AF/KLM
 
+cp .env.example .env
+# → éditer .env : AFKLM_DB_*, MODEL_*_URL, et vérifier ENV_TARGET=prod / DBT_TARGET=prod
+
+cp profiles.yml.example profiles.yml
+# → profiles.yml est gitignoré ; le template documente local / dev / prod
+
+# 7. Provisionner les tables logs.* sur Supabase (première fois)
+# → voir docs/INSTALL.md section 6 (SQL Editor + supabase_logs_bootstrap.sql)
+
+# 8. Créer l'Airflow Connection supabase_prd (après docker compose up)
+# → voir docs/INSTALL.md section 7 (UI ou CLI)
+
 # Les fichiers .env.dev et .env.prod sont fournis séparément (hors Git)
 ```
 
