@@ -150,3 +150,43 @@ docker compose stop
 ```
 
 *(Pour tout relancer le lendemain, un simple `docker compose start` suffira).*
+
+## 9. Volumes dbt & debug manuel
+
+### 9.1 Dossier `target/`
+
+Le repo contient `target/.gitkeep` pour garantir que le dossier existe au clone. **Aucune action manuelle requise.**
+
+Le dossier `target/` est monté dans les containers Airflow sous `/opt/airflow/dbt/target`. dbt y écrit ses artefacts (`manifest.json`, `partial_parse.msgpack`, SQL compilés) lors de chaque `dbt run/compile`. Son contenu est gitignoré (seul `.gitkeep` est versionné).
+
+**Symptôme si `.gitkeep` manque** : au premier `docker compose up` sur une machine sans dossier `target/` local, Docker crée un dossier vide *owned by root*. Le user `airflow` du container ne peut plus y écrire → `dbt run` échoue avec `Permission denied`. La présence de `target/.gitkeep` prévient ce scénario.
+
+### 9.2 Debug manuel de dbt depuis un container
+
+dbt est installé dans un venv isolé `/home/airflow/dbt_venv/` (approche `ExternalPythonOperator` utilisée par les DAGs). Pour lancer une commande dbt manuellement :
+
+```bash
+docker exec afklm-formation-scheduler /home/airflow/dbt_venv/bin/dbt <commande> \
+  --project-dir /opt/airflow/dbt \
+  --profiles-dir /opt/airflow/dbt \
+  --target prod
+```
+
+Exemples :
+
+```bash
+# Compile-first (safety net syntaxique, ne touche pas Supabase)
+docker exec afklm-formation-scheduler /home/airflow/dbt_venv/bin/dbt compile \
+  --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt --target prod
+
+# Full-refresh d'un modele specifique
+docker exec afklm-formation-scheduler /home/airflow/dbt_venv/bin/dbt run \
+  --select flight_data__int_aircraft_delays --full-refresh \
+  --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt --target prod
+
+# Tests dbt (a integrer J3)
+docker exec afklm-formation-scheduler /home/airflow/dbt_venv/bin/dbt test \
+  --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt --target prod
+```
+
+> **Note :** les DAGs Airflow (`afklm_02_transformation_scoring`) utilisent ce même venv via `ExternalPythonOperator` — pas de duplication d'installation.
