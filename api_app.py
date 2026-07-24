@@ -12,7 +12,6 @@ from fastapi import FastAPI, HTTPException, Query
 from sqlalchemy import create_engine, text
 from typing import Optional
 from prometheus_fastapi_instrumentator import Instrumentator
-#from utils.monitoring_utils import log_event
 
 ENV_TARGET = os.getenv("ENV_TARGET", "local").strip().lower()
 print(f"[FASTAPI STARTUP] Environnement detecte : {ENV_TARGET.upper()}")
@@ -81,12 +80,9 @@ def load_ml_models_from_storage():
 async def lifespan(app: FastAPI):
     try:
         load_ml_models_from_storage()
-        log_event(
-            level="INFO", layer="API", dag_id="system_startup", task_id="fastapi_lifespan",
-            event_type="api_boot_success", message="Démarrage nominal du backend FastAPI."
-        )
+        print("[FASTAPI LIFESPAN] Modeles ML charges, API prete.")
     except Exception as boot_err:
-        pass
+        print(f"[FASTAPI LIFESPAN] Erreur au boot : {boot_err}")
     yield
 
 app = FastAPI(title="API AFKLM - Monitoring & Analytics ML", lifespan=lifespan)
