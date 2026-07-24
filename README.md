@@ -329,6 +329,7 @@ Tous les fichiers contenant des secrets ou des données d'environnement sont **g
 | `.env.dev` | Credentials Supabase dev | Credentials en clair |
 | `.env.prod` | Credentials Supabase prod | Credentials en clair |
 | `profiles.yml` | Config dbt avec host/password | Credentials en clair |
+| `.smtp_password` | Google App Password 16 chars pour Alertmanager | Secret SMTP |
 | `.dlt/secrets.toml` | Clé API AF/KLM | Secret API |
 
 Les fichiers `.example` versionnés (`profiles.yml.example`, `.dlt/secrets.toml.example`) servent de templates documentés sans aucun secret.

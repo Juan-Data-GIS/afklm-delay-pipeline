@@ -29,7 +29,14 @@ cp .env.example .env
 
 cp profiles.yml.example profiles.yml
 # → profiles.yml est gitignoré ; documente les targets local / dev / prod
+
+# Créer le fichier secret Alertmanager (obligatoire, sinon crash au boot)
+touch .smtp_password
+# → laisser vide si vous ne recevrez pas les mails (Alertmanager démarrera quand même)
+# → renseigner 1 seule ligne = Google App Password 16 chars pour recevoir les alertes
 ```
+
+> Le fichier `.smtp_password` est monté dans le container Alertmanager comme secret file (`smtp_auth_password_file`). S'il est absent sur l'hôte, Docker crée un dossier vide à sa place et Alertmanager crash. S'il est vide, Alertmanager démarre mais l'envoi de mail échoue silencieusement — utile pour les postes qui ne font pas la démo mail.
 
 Points critiques à vérifier dans `.env` :
 
