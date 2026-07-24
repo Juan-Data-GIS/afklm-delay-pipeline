@@ -1,13 +1,13 @@
 global:
-  smtp_from: "prometheus.datascientest@gmail.com"
+  smtp_from: "jf.formation.dst@gmail.com"
   smtp_smarthost: "smtp.gmail.com:587"
-  smtp_auth_username: "prometheus.datascientest@gmail.com"
-  smtp_auth_password: "qsyhonvlraonufcg"
+  smtp_auth_username: "jf.formation.dst@gmail.com"
+  smtp_auth_password_file: "/etc/alertmanager/smtp_password"
   smtp_require_tls: true
 
 route:
   group_by: ["alertname"]
-  group_wait: 10s
+  group_wait: 5s
   group_interval: 1m
   repeat_interval: 3h
   receiver: "default-receiver"
@@ -15,5 +15,46 @@ route:
 receivers:
   - name: "default-receiver"
     email_configs:
-      - to: "jflactif@gmail.com"
+      - to: "jf.formation.dst@gmail.com"
         send_resolved: true
+        headers:
+          subject: "[{{ .Status | toUpper }}] Incident {{ .CommonLabels.alertname }} - {{ .CommonLabels.instance }}"
+        html: |
+          <div style="font-family: Arial, sans-serif; color: #333333; line-height: 1.5; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 20px;">
+            <div style="margin-bottom: 20px; text-align: left;">
+              <img src="https://s3-eu-west-1.amazonaws.com/tpd/logos/697a305f794e2f0e63fba37b/0x0.png" alt="Liora" style="height: 40px; display: block;" />
+            </div>
+            
+            <h2 style="font-size: 16px; font-weight: bold; border-bottom: 1px solid #cccccc; padding-bottom: 8px; margin-top: 0;">
+              Notification d'incident système : {{ .Status | toUpper }}
+            </h2>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+              <tr>
+                <td style="padding: 4px 0; font-weight: bold; width: 30%;">Composant :</td>
+                <td style="padding: 4px 0;">{{ .CommonLabels.instance }}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; font-weight: bold;">Rôle / Job :</td>
+                <td style="padding: 4px 0;">{{ .CommonLabels.job }}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; font-weight: bold;">Niveau d'impact :</td>
+                <td style="padding: 4px 0;">{{ .CommonLabels.severity }}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; font-weight: bold;">Détail :</td>
+                <td style="padding: 4px 0;">{{ .CommonAnnotations.description }}</td>
+              </tr>
+            </table>
+
+            <div style="background-color: #f9f9f9; border-left: 3px solid #333333; padding: 10px; font-size: 12px; margin-bottom: 20px;">
+              <strong>Procédure à suivre :</strong><br>
+              En cas d'alerte active, consulter la documentation du support pour appliquer les vérifications d'usage :<br>
+              <a href="https://docs.google.com/document/d/1D55FAIX8xATgbvdl66rO5tDzU2YBVqtImHn4LxYzrmQ/edit?tab=t.0" style="color: #0056b3; text-decoration: underline;">Manuel de résolution des incidents N1/N2</a>
+            </div>
+
+            <p style="font-size: 11px; color: #777777; margin-0;">
+              Supervision de la plateforme de données AFKLM - Notification automatique
+            </p>
+          </div>
