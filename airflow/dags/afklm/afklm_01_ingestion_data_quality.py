@@ -208,4 +208,4 @@ with DAG(
         wait_for_completion=False
     )
 
-    start_tracking >> run_dlt_pipeline >> verify_ingestion_quality >> trigger_next_dag
+    start_tracking >> run_dlt_pipeline >> verify_ingestion_quality >> end_tracking >> trigger_next_dag
