@@ -1,9 +1,37 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from uuid import UUID
 
 LOGGER = logging.getLogger("airflow.task")
+
+
+def _json_default(obj):
+    """Fallback encoder pour psycopg2.extras.Json.
+
+    Convertit en primitives JSON les types Python non gérés
+    nativement par json.dumps (datetime, date, timedelta, UUID, Decimal).
+    Le TypeError final garantit qu'un type inattendu remontera au lieu
+    d'être silencieusement ignoré.
+    """
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if isinstance(obj, date):
+        return obj.isoformat()
+    if isinstance(obj, timedelta):
+        return obj.total_seconds()
+    if isinstance(obj, UUID):
+        return str(obj)
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _safe_dumps(value) -> str:
+    return json.dumps(value, default=_json_default)
+
 
 LOG_TABLE = "logs.airflow_events"
 RUN_TABLE = "logs.pipeline_runs"
@@ -157,11 +185,15 @@ def _persist_pipeline_run(payload: dict, run_id: str, date_metier: datetime) -> 
                 cur.execute(sql, (
                     run_id, dag_id, date_metier.date(), status, 
                     vols_ingested, transformation_rows, error_message, 
-                    Json(execution_context) if execution_context else None
+                    Json(execution_context, dumps=_safe_dumps) if execution_context else None
                 ))
             conn.commit()
-    except Exception as run_err:
-        LOGGER.warning("[MONITORING ACCÈS LOGS] Impossible d'écrire dans la table pipeline_run: %s", run_err)
+    except Exception:
+        LOGGER.error(
+            "[monitoring] pipeline_runs upsert failed (dag_id=%s, task_id=%s, run_id=%s)",
+            dag_id, task_id, run_id,
+            exc_info=True,
+        )
 
 
 def _persist_event(payload: dict) -> None:
@@ -193,7 +225,7 @@ def _persist_event(payload: dict) -> None:
         run_id,
         payload.get("event_type"),
         payload.get("message"),
-        Json(extra) if extra else None,
+        Json(extra, dumps=_safe_dumps) if extra else None,
     )
 
     sql = f"""
@@ -255,8 +287,12 @@ def log_event(
 
     try:
         _persist_event(payload)
-    except Exception as exc:
-        LOGGER.warning("log_event DB persist failed: %s", exc)
+    except Exception:
+        LOGGER.error(
+            "[monitoring] log_event persist failed (dag_id=%s, task_id=%s, event_type=%s)",
+            payload.get("dag_id"), payload.get("task_id"), payload.get("event_type"),
+            exc_info=True,
+        )
 
 
 def log_operator_failure(context, *, layer: str, event_type: str = "task_failure", message: str | None = None) -> None:
