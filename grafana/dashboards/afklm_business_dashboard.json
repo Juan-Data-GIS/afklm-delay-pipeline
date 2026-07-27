@@ -95,7 +95,7 @@
           }
         }
       ],
-      "title": "Volume Total de Vols Traites (Datamart)",
+      "title": "Trafic Aérien Couvert (Période)",
       "type": "stat"
     },
     {
@@ -183,7 +183,7 @@
           }
         }
       ],
-      "title": "Taux Global de Retards Predits",
+      "title": "Vols à Risque de Retard (%)",
       "type": "stat"
     },
     {
@@ -325,7 +325,7 @@
           }
         }
       ],
-      "title": "Total Vols Ingestes (KPI Orchestrateur)",
+      "title": "Fiabilité Ingestion (Runs OK)",
       "type": "stat"
     },
     {

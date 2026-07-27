@@ -84,9 +84,10 @@ services:
     container_name: afklm-formation-init
     command: >
       bash -c "
+      set -e &&
       airflow db migrate &&
-      airflow fab users create \
-        --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
+      (airflow users list --output plain 2>/dev/null | awk 'NR>1 {print \$2}' | grep -qx admin ||
+       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com)
       "
 
   airflow-apiserver:
@@ -189,6 +190,8 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    env_file:
+      - .env
     volumes:
       # Sauvegarde des données (utilisateurs, sessions, etc...).
       - grafana_storage:/var/lib/grafana
