@@ -97,7 +97,6 @@ def success_pipeline_tracking():
         explicit_timestamp=business_date,
         vols_ingested=vols,
         rows_inserted=vols,
-        finished_at=end_time,
         duration_sec=duration_sec,
         execution_context="scheduled" if not start_date_param.strip() else "manual",
         pipeline_engine="dlt"
