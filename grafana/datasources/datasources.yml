@@ -7,16 +7,36 @@ datasources:
     url: http://afklm-formation-prometheus:9090
     isDefault: false
 
+  # Datasource Supabase (prod) — utilisée par afklm_business_dashboard.json
+  # UID figé à "PostgreSQL" pour rester compatible avec les panels du dashboard
+  # (qui référencent en dur "uid": "PostgreSQL")
   - name: PostgreSQL
+    uid: PostgreSQL
+    type: postgres
+    access: proxy
+    url: ${AFKLM_DB_HOST}:${AFKLM_DB_PORT}
+    database: ${AFKLM_DB_NAME}
+    user: ${AFKLM_DB_USER}
+    isDefault: true
+    secureJsonData:
+      password: ${AFKLM_DB_PASSWORD}
+    jsonData:
+      sslmode: "require"
+      postgresVersion: 1500
+      timescaledb: false
+
+  # Datasource locale Docker — conservée pour debug/dev, non-défaut
+  - name: PostgreSQL_Local
+    uid: PostgreSQL_Local
     type: postgres
     access: proxy
     url: afklm-formation-postgres-local:5432
     database: data_hub
     user: data_engineer
-    isDefault: true
+    isDefault: false
     secureJsonData:
       password: "FormationData2026"
     jsonData:
-      sslmode: "disable" # Local Docker : pas de SSL
+      sslmode: "disable"
       postgresVersion: 1500
       timescaledb: false
