@@ -3,9 +3,6 @@
 .env.dev
 .env.prod
 
-# Alertmanager SMTP secret (Google App Password 16 chars, jamais versionner)
-.smtp_password
-
 # dbt
 profiles.yml
 .user.yml

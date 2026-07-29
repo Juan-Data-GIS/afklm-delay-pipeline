@@ -2,13 +2,7 @@ global:
   scrape_interval: 5s
   evaluation_interval: 5s
 
-# Configuration de l'Alertmanager
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
-
-# Chargement des règles d'alertes
+# Chargement des règles d'alertes (visibles dans /alerts, sans Alertmanager)
 rule_files:
   - "alert.rules"
 

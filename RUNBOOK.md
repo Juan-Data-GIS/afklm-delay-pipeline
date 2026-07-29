@@ -50,7 +50,7 @@ cd afklm-delay-pipeline
 cp .env.example .env
 ```
 
-Éditer `.env` — les 5 blocs à renseigner :
+Éditer `.env` — les 4 blocs à renseigner :
 
 | Bloc | Variables | Où trouver |
 |---|---|---|
@@ -58,11 +58,6 @@ cp .env.example .env
 | API AFKLM | `AF_CLIENT_ID_1..5`, `SOURCES__AFKLM__API_KEY` | developer.airfranceklm.com (au moins `AF_CLIENT_ID_1` suffit) |
 | Modèles ML | `MODEL_MEANS_URL`, `MODEL_SCALER_URL`, `MODEL_XGB_URL` | Supabase → Storage → `ml_models` → generate signed URL |
 | Runtime | `ENV_TARGET=prod`, `DBT_TARGET=prod` | Cohérent = pointe sur Supabase (mettre `local` pour Postgres Docker) |
-| Alerting (optionnel) | fichier `.smtp_password` | Google App Password 16 caractères ou fichier vide |
-
-```bash
-touch .smtp_password   # OK laissé vide si pas de démo mail
-```
 
 ### 3.3 Bootstrap Supabase (schéma `logs`)
 

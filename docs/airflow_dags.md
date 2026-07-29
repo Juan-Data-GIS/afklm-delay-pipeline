@@ -683,7 +683,7 @@ Dans `afklm_source.py`, les métriques (`vols_count`, `legs_count`, `delays_coun
 >
 > L'observabilité est centralisée sur **deux tables Postgres** (`logs.airflow_events` pour les events atomiques, `logs.pipeline_runs` pour l'agrégat par run) alimentées à chaque étape par `monitoring_utils.log_event()`, et visualisées via **Grafana**.
 >
-> L'ensemble tourne sur une stack **Docker Compose de 14 services** : Airflow (`apiserver` + `scheduler` + `dag-processor` + `init`), FastAPI, Streamlit, 2 Postgres (metadata Airflow + local dataops), Prometheus, Grafana, Alertmanager, cAdvisor, Node Exporter, Postgres Exporter.
+> L'ensemble tourne sur une stack **Docker Compose** : Airflow (`apiserver` + `scheduler` + `dag-processor` + `init`), FastAPI, Streamlit, 2 Postgres (metadata Airflow + local dataops), Prometheus, Grafana, Node Exporter, Postgres Exporter.
 
 ---
 
