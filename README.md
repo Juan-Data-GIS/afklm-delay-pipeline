@@ -70,7 +70,7 @@ Le projet s'appuie sur deux dépôts Git distincts :
 
 ## Infrastructure Docker & Orchestration
 
-Le pipeline s'exécute sur une stack Docker Compose multi-services qui orchestre l'ingestion, la transformation, le serving et le monitoring. Voir [`docs/INSTALL.md`](docs/INSTALL.md) pour la procédure d'installation complète.
+Le pipeline s'exécute sur une stack Docker Compose multi-services qui orchestre l'ingestion, la transformation, le serving et le monitoring. Voir [`RUNBOOK.md`](RUNBOOK.md) pour la procédure d'exécution complète (setup initial + lancement d'un run).
 
 ### Airflow
 
@@ -265,10 +265,11 @@ cp profiles.yml.example profiles.yml
 # → profiles.yml est gitignoré ; le template documente local / dev / prod
 
 # 7. Provisionner les tables logs.* sur Supabase (première fois)
-# → voir docs/INSTALL.md section 6 (SQL Editor + supabase_logs_bootstrap.sql)
+# → voir RUNBOOK.md section 3.3 (SQL Editor + supabase_logs_bootstrap.sql)
 
-# 8. Créer l'Airflow Connection supabase_prd (après docker compose up)
-# → voir docs/INSTALL.md section 7 (UI ou CLI)
+# 8. (Auto) Les connections Airflow supabase_prd + postgres_local sont créées
+#     automatiquement par airflow-init au premier docker compose up.
+#     Voir RUNBOOK.md section 6 pour le fallback manuel (fix incidents).
 
 # Les fichiers .env.dev et .env.prod sont fournis séparément (hors Git)
 ```
