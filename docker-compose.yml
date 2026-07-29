@@ -172,20 +172,6 @@ services:
     depends_on:
       - postgres_exporter
       - node-exporter
-  alertmanager:
-    image: prom/alertmanager:v0.27.0
-    container_name: afklm-formation-alertmanager
-    volumes:
-      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      - ./.smtp_password:/etc/alertmanager/smtp_password
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-    ports:
-      - "9093:9093"
-    networks:
-      - afklm-formation-net
-    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:10.4.2

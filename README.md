@@ -100,8 +100,7 @@ UI disponible sur `http://localhost:${STREAMLIT_PORT}` (défaut : 8501).
 
 Stack d'observabilité complète :
 
-- **Prometheus** (`prometheus/prometheus.yml`) — scrape des métriques (FastAPI, Postgres exporter, cAdvisor, node-exporter)
-- **Alertmanager** (`prometheus/alertmanager.yml` + `prometheus/alert.rules`) — règles d'alerting
+- **Prometheus** (`prometheus/prometheus.yml` + `prometheus/alert.rules`) — scrape des métriques (FastAPI, Postgres exporter, node-exporter) et évaluation des règles d'alertes (UI `/alerts`)
 - **Grafana** (`grafana/`) — dashboards préconfigurés avec datasource Prometheus
 
 UI Grafana : `http://localhost:${GRAFANA_PORT}` (défaut : 3000).
@@ -330,7 +329,6 @@ Tous les fichiers contenant des secrets ou des données d'environnement sont **g
 | `.env.dev` | Credentials Supabase dev | Credentials en clair |
 | `.env.prod` | Credentials Supabase prod | Credentials en clair |
 | `profiles.yml` | Config dbt avec host/password | Credentials en clair |
-| `.smtp_password` | Google App Password 16 chars pour Alertmanager | Secret SMTP |
 | `.dlt/secrets.toml` | Clé API AF/KLM | Secret API |
 
 Les fichiers `.example` versionnés (`profiles.yml.example`, `.dlt/secrets.toml.example`) servent de templates documentés sans aucun secret.
