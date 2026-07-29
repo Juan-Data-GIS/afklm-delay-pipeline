@@ -87,7 +87,11 @@ services:
       set -e &&
       airflow db migrate &&
       (airflow users list --output plain 2>/dev/null | awk 'NR>1 {print \$2}' | grep -qx admin ||
-       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com)
+       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com) &&
+      (airflow connections get postgres_local >/dev/null 2>&1 ||
+       airflow connections add postgres_local --conn-type postgres --conn-host postgres_local --conn-login data_engineer --conn-password FormationData2026 --conn-schema data_hub --conn-port 5432) &&
+      (airflow connections get supabase_prd >/dev/null 2>&1 ||
+       airflow connections add supabase_prd --conn-type postgres --conn-host \"\$AFKLM_DB_HOST\" --conn-login \"\$AFKLM_DB_USER\" --conn-password \"\$AFKLM_DB_PASSWORD\" --conn-schema postgres --conn-port 5432 --conn-extra '{\"sslmode\":\"require\"}')
       "
 
   airflow-apiserver:
