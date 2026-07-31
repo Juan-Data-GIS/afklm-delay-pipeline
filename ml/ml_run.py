@@ -11,7 +11,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 # --- SYSTEM RESOLUTION: LOCAL SANDBOX VS SUPABASE CLOUD ---
-ENV_TARGET = os.getenv("ENV_TARGET", "local").strip().lower()
+ENV_TARGET = os.getenv("ENV_TARGET", "prod").strip().lower()
 print(f"[ML RUNNING ENGINE] Target Execution Environment: {ENV_TARGET.upper()}")
 
 if ENV_TARGET == "local":
@@ -50,71 +50,39 @@ TARGET = "is_delayed"
 
 
 def _load_pickle_from_url(url: str | None, *, label: str) -> object:
+
+
     if not url or not str(url).strip():
         raise RuntimeError(
             f"{label} est vide ou absent. Définir MODEL_MEANS_URL, MODEL_SCALER_URL, "
             "MODEL_XGB_URL dans l'environnement."
         )
 
-    import io
     import pickle
     import pandas as pd
     import numpy as np
-
-    # --- INJECTEUR DE COMPATIBILITÉ UNIVERSELLE ANTI-CRASH PANDAS V1 VS V2 ---
-    class SafeDataOpsUnpickler(pickle.Unpickler):
-        def find_class(self, module, name):
-            if 'pandas' in module and name == 'StringDtype':
-                return pd.StringDtype
-            if module == 'pandas.core.arrays.string_' or 'NDArrayBacked' in name:
-                return np.ndarray
-            return super().find_class(module, name)
-
-    req = urllib.request.Request(str(url), method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
-            binary_data = resp.read()
-            
-            try:
-                obj = SafeDataOpsUnpickler(io.BytesIO(binary_data)).load()
-                
-                if label == "MODEL_MEANS_URL":
-                    if isinstance(obj, pd.DataFrame):
-                        # On force la conversion des clés du dictionnaire en minuscules/snake_case si nécessaire
-                        raw_dict = obj.to_dict(orient='records')[0]
-                        return {k.lower().replace("shares", "_share").replace("duration", "_duration_minutes").replace("day", "day").replace("weekday", "_weekday").replace("hour", "_hour"): v for k, v in raw_dict.items()}
-                    elif isinstance(obj, pd.Series):
-                        return obj.to_dict()
-                    elif isinstance(obj, dict):
-                        return obj
+        obj = pickle.load(urllib.request.urlopen(url))
+
+
+        if label == "MODEL_MEANS_URL":
+            if isinstance(obj, pd.DataFrame):
+                # On force la conversion des clés du dictionnaire en minuscules/snake_case si nécessaire
+                raw_dict = obj.to_dict(orient='records')[0]
+                return {k.lower().replace("shares", "_share").replace("duration", "_duration_minutes").replace("day", "day").replace("weekday", "_weekday").replace("hour", "_hour"): v for k, v in raw_dict.items()}
+            elif isinstance(obj, pd.Series):
+                return obj.to_dict()
+            elif isinstance(obj, dict):
                 return obj
-                
-            except (TypeError, NotImplementedError, AttributeError):
-                print(f"[ML COMPATIBILITY WARNING] Rupture de compatibilité binaire sur {label}. Application de la stratégie de secours...")
-                
-                # Alignement strict du dictionnaire de secours sur la nomenclature FEATURES
-                default_means = {
-                    "scheduled_flight_duration_minutes": 142.5,
-                    "nb_flight_departing_departure_airport": 45.0,
-                    "nb_flight_arriving_departure_airport": 42.0,
-                    "nb_flight_departing_arrival_airport": 44.0,
-                    "nb_flight_arriving_arrival_airport": 41.0,
-                    "departure_airport_delayed_share": 18.4,
-                    "aircraft_delayed_share": 12.1,
-                    "airline_delayed_share": 14.7,
-                    "departure_monthday": 15.0,
-                    "departure_weekday": 3.0,
-                    "departure_hour": 12.0
-                }
-                
-                if label == "MODEL_MEANS_URL":
-                    return default_means
-                
-                return pickle.loads(binary_data)
-                
+        return obj
+         
     except Exception as e:
-        print(f"[ML NETWORK ERROR] Échec critique d'acquisition réseau de l'artefact : {e}")
+        print(f"[ML NETWORK ERROR] Échec critique d'acquisition réseau de l'artefact {label} : {e}")
         raise e
+
+
+
+
 
 
 def load_data(engine) -> pd.DataFrame:
@@ -130,12 +98,22 @@ def load_data(engine) -> pd.DataFrame:
     """
     try:
         # Essai en mode incrémental (vitesse maximale en production)
-        return pd.read_sql(incremental_query, engine)
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                sql=incremental_query,
+                con=conn.connection
+            )
+        return df
     except Exception as e:
         # Si la table ml_delays n'existe pas encore (First Run), on intercepte proprement
         if "undefinedtable" in str(e).lower() or "does not exist" in str(e).lower():
             print("[ML MLOPS INFO] Table public.ml_delays non détectée (Premier run à froid). Repli sur le chargement complet.")
-            return pd.read_sql(fallback_query, engine)
+            with engine.connect() as conn:
+                df = pd.read_sql(
+                    sql=fallback_query,
+                    con=conn.connection
+                )
+            return df
         else:
             raise e
 
