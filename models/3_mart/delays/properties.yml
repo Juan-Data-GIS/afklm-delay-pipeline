@@ -1,5 +1,50 @@
 version: 2
 
-# Faits et dimensions - consommation Metabase
-# Voir README pour les conventions
-models: []
+# Faits et dimensions - consommation Metabase / FastAPI / Streamlit.
+# Voir README pour les conventions.
+#
+# Tests de contrat minimal sur les cles du star schema.
+# Volontairement larges (unique + not_null uniquement).
+# L'affinage metier (accepted_values, relationships, ranges) est a faire
+# avec Vincent et un data owner AF/KLM en post-demo.
+
+models:
+  - name: fct_flight_legs
+    description: "Table de faits centrale, 1 ligne par leg de vol."
+    columns:
+      - name: leg_id
+        description: "Identifiant unique du leg (UUID)."
+        data_tests:
+          - unique
+          - not_null
+      - name: flight_id
+        description: "Identifiant du vol parent."
+        data_tests:
+          - not_null
+
+  - name: dim_date
+    description: "Dimension date issue des vols scores."
+    columns:
+      - name: date_key
+        description: "Date metier au format YYYY-MM-DD."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_airlines
+    description: "Dimension compagnies aeriennes."
+    columns:
+      - name: airline_key
+        description: "Code IATA/ICAO de la compagnie."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_airports
+    description: "Dimension aeroports (depart union arrivee)."
+    columns:
+      - name: airport_key
+        description: "Code IATA de l'aeroport."
+        data_tests:
+          - unique
+          - not_null

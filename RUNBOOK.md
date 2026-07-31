@@ -102,7 +102,13 @@ Attendu : `['postgres_local', 'supabase_prd']` — les 2 connections Airflow son
 
 **Ce qui se passe** : appel API AF/KLM pour la date cible, écriture d'environ 1400 vols dans Supabase (`public.operational_flights`, `operational_flight_legs`, `operational_flight_delays`), puis contrôles de qualité.
 
-**Déclencheur** : Airflow UI ([http://localhost:8081](http://localhost:8081), login `admin`/`admin`) → activer le toggle `afklm_01_ingestion_data_quality` → bouton **Trigger DAG w/ config** :
+**Prérequis Airflow UI** ([http://localhost:8081](http://localhost:8081), login `admin`/`admin`) : activer les **deux** toggles bleus avant tout trigger :
+- `afklm_01_ingestion_data_quality`
+- `afklm_02_transformation_scoring`
+
+Sans le second, le `TriggerDagRunOperator` créera bien un DagRun pour DAG 02, mais il restera en état `queued` sans démarrer. Cf. [Section 6 — DAG 02 ne démarre pas](#dag-02-ne-démarre-pas-après-dag-01-vert).
+
+**Déclencheur** : cliquer **Trigger DAG w/ config** sur `afklm_01_ingestion_data_quality` :
 
 ```json
 {"start_date": "2026-08-01", "end_date": "2026-08-01", "env_target": "prod"}
@@ -200,6 +206,46 @@ Vérifier d'abord que DAG 01 est bien allé jusqu'au bout — DAG 02 dépend de 
 Symptôme historique du monitoring silencieux (résolu depuis, mais bon à connaître) :
 1. Chercher dans les logs Airflow : `[monitoring]` ou `persist failed`
 2. La stack trace pointera la vraie cause (JSON non sérialisable, connection cassée, permissions Supabase)
+
+### Grafana refuse `admin/admin` au login
+
+Le volume `grafana_storage` est persistant entre les `docker compose up -d --build`. Grafana ne relit `GF_SECURITY_ADMIN_PASSWORD` **qu'au premier boot sur un volume vierge** — si le pwd a été changé auparavant (y compris via le prompt "Change your password" au premier login), le nouveau hash est stocké dans la SQLite persistante.
+
+**Fix immédiat** (garde les dashboards custom) :
+
+```bash
+docker exec -it afklm-formation-grafana grafana-cli admin reset-admin-password admin
+```
+
+Attendu : `Admin password changed successfully ✔`. Re-login avec `admin/admin`.
+
+**Reset complet** (le provisioning YAML `./grafana/` recrée les dashboards) :
+
+```bash
+docker compose stop grafana
+docker volume rm afklm-formation_grafana_storage
+docker compose up -d grafana
+```
+
+### DAG 02 ne démarre pas après DAG 01 vert
+
+Le `TriggerDagRunOperator` du DAG 01 **crée** un DagRun pour `afklm_02_transformation_scoring`, mais le laisse en état `queued` si le DAG 02 est paused (toggle bleu OFF dans l'UI Airflow). Symptôme : DAG 01 tout vert, aucun run visible sur DAG 02.
+
+**Diagnostic** :
+
+```bash
+docker exec afklm-formation-apiserver airflow dags list --output plain | grep afklm
+```
+
+Colonne `paused` doit être `False` pour les deux DAGs.
+
+**Fix** — activer le DAG 02 (le DagRun `queued` démarre automatiquement) :
+
+```bash
+docker exec afklm-formation-apiserver airflow dags unpause afklm_02_transformation_scoring
+```
+
+Ou toggle bleu ON dans l'UI. Prévention : voir [Section 4.1 — Prérequis Airflow UI](#41-déclencher-dag-01--ingestion--data-quality).
 
 ---
 
