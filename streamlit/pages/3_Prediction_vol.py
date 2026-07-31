@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+from datetime import datetime, date
 
 # API Configuration
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
@@ -51,6 +52,12 @@ def process_flights(response_json):
         st.error(f"Erreur lors du traitement des données de vol: {e}")
         return None
 
+# Filter future dates
+def filter_future_dates(dates):
+    today = date.today()
+    future_dates = [d for d in dates if datetime.strptime(d, "%Y-%m-%d").date() >= today]
+    return future_dates
+    
 # Initialize session state
 if "day_chosen" not in st.session_state:
     st.session_state.day_chosen = False
@@ -78,10 +85,13 @@ with st.container(border=True):
             st.stop()
         raw_data.sort()
 
+    # Filter to only include future dates
+    future_dates = filter_future_dates(raw_data)
+    
     # Day selection
     option = st.selectbox(
         "Choisissez le jour de votre vol:",
-        raw_data,
+        future_dates,
         key="day_selectbox"
     )
 
