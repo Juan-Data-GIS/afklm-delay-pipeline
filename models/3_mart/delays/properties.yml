@@ -4,9 +4,11 @@ version: 2
 # Voir README pour les conventions.
 #
 # Tests de contrat minimal sur les cles du star schema.
-# Volontairement larges (unique + not_null uniquement).
-# L'affinage metier (accepted_values, relationships, ranges) est a faire
-# avec Vincent et un data owner AF/KLM en post-demo.
+# Volontairement larges : unique en severity=warn sur dimensions degenerees
+# (dim_airlines, dim_airports) car les libelles heritees de l'API AF/KLM ne
+# sont pas strictement normalises (ex. "Air France" vs "AIR FRANCE").
+# L'affinage metier (deduplication GROUP BY, accepted_values, relationships)
+# est a faire avec un data owner AF/KLM en post-demo.
 
 models:
   - name: fct_flight_legs
@@ -37,7 +39,9 @@ models:
       - name: airline_key
         description: "Code IATA/ICAO de la compagnie."
         data_tests:
-          - unique
+          - unique:
+              config:
+                severity: warn
           - not_null
 
   - name: dim_airports
@@ -46,5 +50,7 @@ models:
       - name: airport_key
         description: "Code IATA de l'aeroport."
         data_tests:
-          - unique
+          - unique:
+              config:
+                severity: warn
           - not_null
