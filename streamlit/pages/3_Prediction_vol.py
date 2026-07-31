@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import os
-from datetime import datetime, date
+from datetime import datetime, timedelta, timezone
 
 # API Configuration
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
@@ -52,12 +52,11 @@ def process_flights(response_json):
         st.error(f"Erreur lors du traitement des données de vol: {e}")
         return None
 
-# Filter future dates
+# Filter future dates (UTC+2 = heure d'été Europe/Paris — couvre la démo jusqu'à fin octobre 2026)
 def filter_future_dates(dates):
-    today = date.today()
-    future_dates = [d for d in dates if datetime.strptime(d, "%Y-%m-%d").date() >= today]
-    return future_dates
-    
+    today_paris = (datetime.now(timezone.utc) + timedelta(hours=2)).date()
+    return [d for d in dates if datetime.strptime(d, "%Y-%m-%d").date() >= today_paris]
+
 # Initialize session state
 if "day_chosen" not in st.session_state:
     st.session_state.day_chosen = False
@@ -87,7 +86,16 @@ with st.container(border=True):
 
     # Filter to only include future dates
     future_dates = filter_future_dates(raw_data)
-    
+
+    if not future_dates:
+        st.info(
+            "Aucune date future disponible dans les données scorées. "
+            "Le pipeline doit d'abord ingérer et scorer des vols à venir "
+            "(voir RUNBOOK section 4.1).",
+            icon="ℹ️",
+        )
+        st.stop()
+
     # Day selection
     option = st.selectbox(
         "Choisissez le jour de votre vol:",

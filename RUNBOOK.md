@@ -105,8 +105,13 @@ Attendu : `['postgres_local', 'supabase_prd']` — les 2 connections Airflow son
 **Déclencheur** : Airflow UI ([http://localhost:8081](http://localhost:8081), login `admin`/`admin`) → activer le toggle `afklm_01_ingestion_data_quality` → bouton **Trigger DAG w/ config** :
 
 ```json
-{"start_date": "2026-07-24", "end_date": "2026-07-24", "env_target": "prod"}
+{"start_date": "2026-08-01", "end_date": "2026-08-01", "env_target": "prod"}
 ```
+
+> Ajuster `start_date` / `end_date` à J+1 ou J+2 par rapport à la date d'exécution.
+> La page Streamlit « Prédiction de vol » filtre automatiquement les dates passées ;
+> sans vols futurs scorés, le sélecteur sera vide. L'API AF/KLM Operational Flights
+> renvoie typiquement une fenêtre J-7 → J+3 ; au-delà de J+3 l'ingestion peut être vide.
 
 **Durée typique** : ~7 min
 
