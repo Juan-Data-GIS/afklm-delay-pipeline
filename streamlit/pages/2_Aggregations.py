@@ -76,7 +76,7 @@ if trigger_api:
                     
                     # --- AFFICHAGE DES KPIS EN CARTES (Si disponibles) ---
                     if kpis:
-                        st.markdown("#### Indicateurs de Performance Globaux (Axe filtré)")
+                        st.markdown("#### Indicateurs sur les sept derniers jours (par Axe filtré)")
                         kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
                         with kpi_col1:
                             st.metric(label="Taux de retard moyen", value=f"{kpis.get('global_rate')}%")
@@ -103,7 +103,7 @@ if trigger_api:
                     # Construction du graphique
                     fig = px.bar(
                         df_chart, x='label', y='delayed_share',
-                        title=f"Distribution du Taux de Retard (%) par {dimension_label} ({top_n})",
+                        title=f"Distribution du Taux de Retard (%) par {dimension_label} sur les sept derniers jours ({top_n})",
                         labels={'label': dimension_label, 'delayed_share': 'Taux de retard (%)'},
                         color='delayed_share', 
                         color_continuous_scale="blues"
@@ -117,7 +117,7 @@ if trigger_api:
                             y=moyenne_globale, 
                             line_dash="dash", 
                             line_color="red",
-                            annotation_text=f"Moyenne globale : {moyenne_globale}%", 
+                            annotation_text=f"Moyenne globale sur les sept derniers jours : {moyenne_globale}%", 
                             annotation_position="top left"
                         )
                     
