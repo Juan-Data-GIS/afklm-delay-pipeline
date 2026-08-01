@@ -89,7 +89,7 @@ def load_data(engine) -> pd.DataFrame:
     """Charge les données de vols. Supporte élégamment l'absence de la table ml_delays au premier run."""
     incremental_query = """
         SELECT l.* FROM public_mart.fct_flight_legs l
-        LEFT JOIN public.ml_delays d ON l.leg_id = d.leg_id
+        LEFT JOIN public.ml_delays d ON CAST(d.leg_id AS VARCHAR(36)) = CAST(l.leg_id AS VARCHAR(36)) 
         WHERE l.cancelled = false AND d.leg_id IS NULL
     """
     fallback_query = """

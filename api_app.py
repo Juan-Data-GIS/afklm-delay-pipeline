@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, text
 from typing import Optional
 from prometheus_fastapi_instrumentator import Instrumentator
 
-ENV_TARGET = os.getenv("ENV_TARGET", "local").strip().lower()
+ENV_TARGET = os.getenv("ENV_TARGET", "prod").strip().lower()
 print(f"[FASTAPI STARTUP] Environnement detecte : {ENV_TARGET.upper()}")
 
 if ENV_TARGET == "local":
@@ -22,8 +22,8 @@ if ENV_TARGET == "local":
     print("[FASTAPI DATABASE] Engine connecte sur : afklm-formation-postgres-local")
 else:
     DB_USER = os.getenv("AFKLM_DB_USER") or os.getenv("DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("AFKLM_DB_PASSWORD") or os.getenv("DB_PASSWORD", "FormationData2026")
-    DB_HOST = os.getenv("AFKLM_DB_HOST") or os.getenv("DB_HOST", "aws-1-eu-west-1.pooler.supabase.com")
+    DB_PASSWORD = os.getenv("AFKLM_DB_PASSWORD") or os.getenv("DB_PASSWORD")
+    DB_HOST = os.getenv("AFKLM_DB_HOST") or os.getenv("DB_HOST", "aws-1-eu-central-1.pooler.supabase.com")
     DB_PORT = os.getenv("AFKLM_DB_PORT") or os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("AFKLM_DB_NAME") or os.getenv("DB_NAME", "postgres")
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"

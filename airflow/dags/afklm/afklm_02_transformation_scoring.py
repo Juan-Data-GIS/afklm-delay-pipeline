@@ -153,7 +153,7 @@ with DAG(
         task_id='afklm_t_dbt_run',
         python='/home/airflow/dbt_venv/bin/python',
         python_callable=run_dbt_transformation,
-        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'prod') }}"},
         on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_run_failure")
     )
 
@@ -161,14 +161,14 @@ with DAG(
         task_id='afklm_t_dbt_test',
         python='/home/airflow/dbt_venv/bin/python',
         python_callable=run_dbt_validation,
-        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'prod') }}"},
         on_failure_callback=operator_failure_callbacks(layer="TRUSTED", event_type="dbt_test_failure")
     )
 
     compute_ml_predictions = PythonOperator(
         task_id='afklm_ml_compute_predictions',
         python_callable=run_ml_scoring_pipeline,
-        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'prod') }}"},
         on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="ml_scoring_failure")
     )
 
@@ -176,7 +176,7 @@ with DAG(
         task_id='afklm_ml_trigger_fastapi',
         python='/home/airflow/pipeline_venv/bin/python',
         python_callable=_trigger_fastapi,
-        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'local') }}"},
+        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'prod') }}"},
         on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="fastapi_reload_failure")
     )
 
