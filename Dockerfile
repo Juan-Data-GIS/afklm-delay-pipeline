@@ -21,7 +21,7 @@ RUN /home/airflow/pipeline_venv/bin/pip install dlt[postgres]==1.23.0 requests==
 # 3. Installation de la suite Data Science / ML native
 COPY requirements.airflow.txt /requirements.airflow.txt
 RUN pip install --no-cache-dir -r /requirements.airflow.txt \
-    pandas==2.2.1 \
+    pandas==3.0.1 \
     scikit-learn==1.4.1.post1 \
-    xgboost==2.0.3 \
+    xgboost==3.2.0 \
     sqlalchemy==2.0.27
