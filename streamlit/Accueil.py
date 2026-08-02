@@ -38,7 +38,7 @@ st.markdown(
     <div class="project-description">
     Ce projet répond à une problématique concrète du transport aérien : <strong>anticiper les retards de vol</strong>.
     À partir des données publiques diffusées par le groupe Air France-KLM, nous avons construit un pipeline complet,
-    de l'ingestion à la prédiction. Les analyses sont accessibles en temps quasi-réel via ce dashboard.
+    de l'ingestion à la prédiction.
     </div>
     """,
     unsafe_allow_html=True
