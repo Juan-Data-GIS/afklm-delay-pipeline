@@ -119,14 +119,6 @@ def run_ml_scoring_pipeline(env_target: str):
     from ml_run import main
     main()
 
-def _trigger_fastapi(env_target: str):
-    import requests
-    import os
-    os.environ["ENV_TARGET"] = env_target.strip().lower()
-    response = requests.post("http://afklm-formation-fastapi:8000/v1/scoring/reload", timeout=30)
-    response.raise_for_status()
-
-
 # Docs Markdown Loader
 docs_path = os.path.join('/opt/airflow/docs', 'afklm_02_transformation_scoring.md')
 dag_doc_md = ""
@@ -172,17 +164,9 @@ with DAG(
         on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="ml_scoring_failure")
     )
 
-    trigger_fastapi_scoring = ExternalPythonOperator(
-        task_id='afklm_ml_trigger_fastapi',
-        python='/home/airflow/pipeline_venv/bin/python',
-        python_callable=_trigger_fastapi,
-        op_kwargs={"env_target": "{{ dag_run.conf.get('env_target', 'prod') }}"},
-        on_failure_callback=operator_failure_callbacks(layer="REFINED", event_type="fastapi_reload_failure")
-    )
-
     end_tracking = PythonOperator(
         task_id="log_success_transformation",
         python_callable=success_trans_tracking
     )
 
-    start_tracking >> run_dbt_models >> run_dbt_tests >> compute_ml_predictions >> trigger_fastapi_scoring >> end_tracking
+    start_tracking >> run_dbt_models >> run_dbt_tests >> compute_ml_predictions >> end_tracking
