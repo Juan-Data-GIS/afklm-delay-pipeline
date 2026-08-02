@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 import os
 
+from sidebar_common import render_sidebar
+
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
 st.set_page_config(page_title="DataOps Monitoring", layout="wide")
@@ -20,6 +22,7 @@ def load_global_css():
             pass
 
 load_global_css()
+render_sidebar()
 
 st.markdown("### Rapport de Traitement de Données")
 st.caption("Suivi des indicateurs de santé de la pipeline.")
