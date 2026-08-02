@@ -3,6 +3,8 @@ import requests
 import os
 from datetime import datetime, timedelta, timezone
 
+from sidebar_common import render_sidebar
+
 # API Configuration
 API_BASE_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
@@ -20,6 +22,7 @@ def load_global_css():
             continue
 
 load_global_css()
+render_sidebar()
 
 # Cache API responses
 @st.cache_data(ttl=3600)  # Cache for 1 hour
