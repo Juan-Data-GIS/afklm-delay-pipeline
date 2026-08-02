@@ -30,58 +30,14 @@ else:
 
 engine = create_engine(DATABASE_URL)
 
-ml_models = {
-    "means": None,
-    "scaler": None,
-    "xgb": None
-}
-
-def load_ml_models_from_storage():
-    """Télécharge les artefacts avec gestion de secours automatique."""
-    print(" Chargement des modèles prédictifs depuis Supabase Storage...")
-    urls = {
-        "means": os.getenv("MODEL_MEANS_URL"),
-        "scaler": os.getenv("MODEL_SCALER_URL"),
-        "xgb": os.getenv("MODEL_XGB_URL")
-    }
-    
-    for model_name, url in urls.items():
-        if not url:
-            if ENV_TARGET == "local":
-                ml_models[model_name] = "MOCK_MODEL_LOCAL"
-            continue
-        try:
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            ml_models[model_name] = pickle.load(io.BytesIO(response.content))
-            print(f" Modèle ML [{model_name}] chargé avec succès.")
-        except Exception as e:
-            print(f" Échec du chargement du modèle [{model_name}]: {e}")
-            
-            # 🌟 SÉCURITÉ REPLI : Si l'artefact Pandas plante, on injecte les valeurs par défaut pour ne pas bloquer l'API
-            if model_name == "means":
-                print("[API COMPATIBILITY] Activation immédiate du dictionnaire de secours pour 'means'")
-                ml_models["means"] = {
-                    "scheduled_flight_duration_minutes": 142.5,
-                    "nb_flight_departing_departure_airport": 45.0,
-                    "nb_flight_arriving_departure_airport": 42.0,
-                    "nb_flight_departing_arrival_airport": 44.0,
-                    "nb_flight_arriving_arrival_airport": 41.0,
-                    "departure_airport_delayed_share": 18.4,
-                    "aircraft_delayed_share": 12.1,
-                    "airline_delayed_share": 14.7,
-                    "departure_monthday": 15.0,
-                    "departure_weekday": 3.0,
-                    "departure_hour": 12.0
-                }
-            elif ENV_TARGET == "local":
-                ml_models[model_name] = "MOCK_MODEL_LOCAL"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        load_ml_models_from_storage()
-        print("[FASTAPI LIFESPAN] Modeles ML charges, API prete.")
+        # Test de la connexion à la base de données
+        with engine.connect() as connection:
+            connection.execute(text("SELECT * from public_raw.flight_data__source_operational_flight_legs limit 1 "))
+        print("[FASTAPI LIFESPAN] Données accessibles, API prete.")
     except Exception as boot_err:
         print(f"[FASTAPI LIFESPAN] Erreur au boot : {boot_err}")
     yield
@@ -89,21 +45,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="API AFKLM - Monitoring & Analytics ML", lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 
+# Endpoint pour le health check
 @app.get("/")
 def read_root():
-    models_status = {k: ("OK" if v is not None else "Manquant") for k, v in ml_models.items()}
-    return {
-        "status": "L'API est en ligne !",
-        "ml_models_loaded": models_status
-    }
-
-@app.post("/v1/scoring/reload")
-def reload_scoring():
     try:
-        load_ml_models_from_storage()
-        return {"status": "success", "message": "Artefacts mis à jour."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Test de la connexion à la base de données
+        with engine.connect() as connection:
+            connection.execute(text("SELECT * from public_raw.flight_data__source_operational_flight_legs limit 1 "))
+        return "[FASTAPI HEALTHCHECK OK] Données accessibles, API prete."
+    except Exception as e :
+        print(f"[FASTAPI HEALTHCHECK ERROR] : {e}")
 
 @app.get("/v1/monitoring/pipeline-logs")
 def get_pipeline_logs():
@@ -166,6 +117,10 @@ def get_delay_metrics(dimension: str = Query(..., description="Choix de l'axe : 
     
     col_name = dimension_map[dimension]
     min_vols_threshold = 50 if dimension in ["airport", "city"] else 10
+
+
+    
+    todays_date = datetime.datetime.today().strftime('%Y-%m-%d')
     
     sql_query = f"""
 
@@ -175,7 +130,8 @@ def get_delay_metrics(dimension: str = Query(..., description="Choix de l'axe : 
                 MAX({col_name}) AS label,
                 MAX(CASE WHEN is_delayed = true THEN 1 ELSE 0 END) as is_delayed
             FROM public_mart.fct_flight_legs
-            WHERE {col_name} IS NOT NULL and is_delayed is not null
+            WHERE {col_name} IS NOT NULL and is_delayed is not null AND cast(date_key as DATE) >= DATE '{todays_date}' - INTERVAL '7 days'  
+
             GROUP BY leg_id
         ),
         aggregated_data AS (
@@ -196,6 +152,7 @@ def get_delay_metrics(dimension: str = Query(..., description="Choix de l'axe : 
         ORDER BY delayed_share DESC;
 
     """
+    
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(sql_query)).mappings().all()
@@ -207,6 +164,7 @@ def get_delay_metrics(dimension: str = Query(..., description="Choix de l'axe : 
             global_rate = round((global_retards * 100.0 / global_vols), 2) if global_vols > 0 else 0.0
             
             return {
+                "today":todays_date,
                 "kpis": {
                     "global_rate": global_rate,
                     "total_vols": global_vols,
