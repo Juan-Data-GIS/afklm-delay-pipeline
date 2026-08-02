@@ -1,17 +1,21 @@
 /* COMPOSANTS NATIFS STREAMLIT*/
 
+.stApp,
+body {
+      color: #cbc8c8;
+}
 
 /* Force la sidebar fermée à rester visible */
 [data-testid="stSidebarCollapsedControl"] {
     left: 0;
-    background-color: #002244;
+    background-color: #cbc8c8;
     padding: 10px;
     border-radius: 0 8px 8px 0;
 }
 
 /* Cosmétique barre latérale principale */
 [data-testid="stSidebar"] {
-    background-color: #f8f9fa;
+    background-color: #00a2df;
     border-right: 1px solid #e0e0e0;
     transition: all 0.3s ease;
 }
@@ -26,33 +30,34 @@
 .main-header {
     text-align: center;
     padding: 10px 0;
+    color: #cbc8c8
 }
 
 .header-title {
-    color: #002244;
+    color: #cbc8c8;
     font-size: 2.8em;
     font-family: sans-serif;
     font-weight: 700;
 }
 
 .header-subtitle {
-    color: #4A607A;
+    color: #cbc8c8;
     font-size: 1.5em;
     font-weight: 400;
 }
 
 /* Design des cartes individuelles de l'équipe technique */
 .learner-card {
-    background-color: #fcfcfc;
+    background-color: #00a2df;
     padding: 20px;
     border-radius: 6px;
-    border: 1px solid #e0e0e0;
-    border-top: 3px solid #002244;
+    border: 1px solid #00a2df;
+    border-top: 3px solid #dfdfdf;
 }
 
 .learner-card h5 {
     margin: 0 0 5px 0;
-    color: #002244;
+    color: #dfdfdf;
 }
 
 .learner-card p {

@@ -1,7 +1,7 @@
 # streamlit/dashboard_afklm.py
 import streamlit as st
 
-st.set_page_config(page_title="DST Airlines - Control Center & ML", layout="wide")
+st.set_page_config(page_title="AFKLM Delay Pipeline - Control Center & ML", layout="wide")
 
 def local_css(file_name):
     try:
@@ -18,12 +18,13 @@ URL_FASTAPI_DOCS = "http://localhost:8000/docs"
 URL_AIRFLOW = "http://localhost:8081"
 URL_PROMETHEUS = "http://localhost:9090"
 URL_GRAFANA = "http://localhost:3000"
-URL_LIORA = "https://learn.datascientest.com/lessons"
-
+URL_LIORA = "https://learn.datascientest.com/"
+URL_SLIDES = "https://docs.google.com/presentation/d/1zrhrSkGNdkNAGvCf629LW4FBGnw0RLpC2AfKAt2dpMw/edit?usp=sharing"
+URL_OBSERVABILITE  = "http://localhost:8501/Observabilite"
+URL_AGREGATION  = "http://localhost:8501/Agregations"
+URL_PREDICTION  = "http://localhost:8501/Prediction_vol"
 # --- SIDEBAR FIXE  ---
 with st.sidebar:
-    st.image("https://logo-marque.com/wp-content/uploads/2020/03/Air-France-Logo.png", width=160)
-    st.divider()
     
     # Section Liens Externes demandée
     st.markdown("### Liens Externes")
@@ -36,22 +37,17 @@ with st.sidebar:
     st.link_button("Interface Grafana", url=URL_GRAFANA, type="secondary", use_container_width=True)
     st.link_button("Documentation FastAPI", url=URL_FASTAPI_DOCS, type="secondary", use_container_width=True)
     st.link_button("Metriques Prometheus", url=URL_PROMETHEUS, type="secondary", use_container_width=True)
+
     st.divider()
-    st.markdown(
-        """
-        <div class="api-status-container">
-            <strong>Target Node :</strong> <code>Local Sandbox (Docker)</code>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+    st.link_button("Slides de présentation", url=URL_SLIDES, type="primary", use_container_width=True )
+
 
 # --- CONTENU DE LA PAGE DE GARDE ---
 st.markdown(
     """
     <div class="main-header">
-        <h1 class="header-title">Soutenance de Projet - Fin de Cycle</h1>
-        <h2 class="header-subtitle">Plateforme unifiee d'Ingestion, de Monitoring et de ML(AFKLM)</h2>
+        <h1 class="header-title">AFKLM Delay Pipeline</h1>
+        <h2 class="header-subtitle">Développement d’un pipeline ETL de prédiction de retard de vol à partir d’une API publique</h2>
     </div>
     """, 
     unsafe_allow_html=True
@@ -59,17 +55,25 @@ st.markdown(
 
 st.divider()
 
-col_logo1, col_logo2 = st.columns([1, 1])
-with col_logo1:
-    st.image("https://logo-marque.com/wp-content/uploads/2020/03/Air-France-Logo.png", width=200)
-with col_logo2:
-    st.image("https://s3-eu-west-1.amazonaws.com/tpd/logos/697a305f794e2f0e63fba37b/0x0.png", width=75)
-    st.caption("Partenaire Metier : Liora")
-    
-st.markdown("<br>", unsafe_allow_html=True)
 
-# Renommage de la section apprenants demandé
-st.markdown("#### Equipe Technique (Data Engineer en formation)")
+st.markdown("""#### Accès aux fonctionnalités
+Cette application permet d'accèder aux résultats d'un pipeline complet allant de l'ingestion de données de vol du groupe AirFrance-KLM à la prédiction de retards sur des vols futurs.
+""")
+
+c1, c2, c3 = st.columns(3)
+with c1: 
+    st.link_button("Observabilité", url=URL_OBSERVABILITE, type="primary", use_container_width=True )
+    st.markdown("Suivi des indicateurs de santé de la pipeline.")
+with c2: 
+    st.link_button("Agrégation, accès aux métriques", url=URL_AGREGATION, type="primary", use_container_width=True )    
+    st.markdown("Analyses des retards constatés")
+with c3: 
+    st.link_button("Prédiction", url=URL_PREDICTION, type="primary", use_container_width=True )
+    st.markdown("Prédiction de retard sur les vols futurs")
+
+st.divider()
+
+st.markdown("#### Equipe Technique")
 c1, c2, c3 = st.columns(3)
 
 with c1:
@@ -81,14 +85,6 @@ with c3:
 
 st.divider()
 
-st.markdown(
-    """
-    ### Perimetre Technique Valide
-    L'objectif de cette soutenance est de valider le fonctionnement d'un pipeline complet d'ingestion de données de vol de la compagnie Air France-KLM, adossé à un cas d'usage analytique de prédiction de retards (MLOps).
-    
-    * **Pipeline DataOps :** Ingestion et orchestration multi-couches gérées de bout en bout par **Apache Airflow 3**.
-    * **Persistance :** Instance relationnelle PostgreSQL hébergée en local sur l'environnement d'évaluation.
-    * **Service d'Exposition :** Développement d'une API de production sous **FastAPI** assurant le requêtage dynamique et l'exposition des métriques d'infrastructure.
-    * **Supervision & Telemetrie :** Collecte des données de santé système via **Prometheus** et restitution graphique centralisée sur **Grafana**.
-    """
-)
+
+
+

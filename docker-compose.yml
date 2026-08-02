@@ -152,7 +152,7 @@ services:
       - afklm-formation-net
     depends_on:
       - fastapi
-    command: streamlit run dashboard_afklm.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run Accueil.py --server.port=8501 --server.address=0.0.0.0
 
   # --- LA PARTIE OBSERVABILITÉ AVEC INJECTION AUTOMATIQUE ---
   prometheus:
